@@ -4,22 +4,22 @@ import { WebView } from 'react-native-webview';
 
 export default function GameScreen() {
   // TODO: Reemplazar esta URL con la URL de tu juego WebGL hosteado
-  const GAME_URL = 'https://tu-juego-webgl.com/index.html';
+  const GAME_URL = 'https://play.unity.com/en/games/943c08ce-733e-4926-80c5-cad674edae5d/unitygame';
 
   // Mostrar mensaje en web (solo funciona en Android/iOS)
   if (Platform.OS === 'web') {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>🎮 Planta Transform</Text>
+          <Text style={styles.headerText}>🎮 El oraculo</Text>
         </View>
         <View style={styles.webNotSupported}>
-          <Text style={styles.webNotSupportedTitle}>📱 Juego disponible solo en móvil</Text>
+          <Text style={styles.webNotSupportedTitle}>Juego disponible solo en móvil mi amor</Text>
           <Text style={styles.webNotSupportedText}>
             Para jugar, abre esta app en un dispositivo Android o iOS.
           </Text>
           <Text style={styles.webNotSupportedHint}>
-            Ejecuta: npm run android
+            Ejecuta: npm run android bobito
           </Text>
         </View>
       </View>
@@ -29,7 +29,7 @@ export default function GameScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerText}>🎮 Planta Transform</Text>
+        <Text style={styles.headerText}>🎮 El oraculo</Text>
       </View>
       
       <WebView
