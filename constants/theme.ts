@@ -51,3 +51,25 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+
+// constants/theme.ts
+export const Stitch = {
+  colors: {
+    bg: "#050505",
+    primary: "#21C45D",
+    card: "rgba(255,255,255,0.05)",
+    border: "rgba(255,255,255,0.10)",
+    divider: "rgba(255,255,255,0.05)",
+    text: "#FFFFFF",
+    textMuted: "rgba(255,255,255,0.50)",
+    textSoft: "rgba(255,255,255,0.60)",
+    warning: "#F97316",
+  },
+  radius: {
+    xl: 24,
+    lg: 20,
+    md: 16,
+    pill: 999,
+  },
+} as const;

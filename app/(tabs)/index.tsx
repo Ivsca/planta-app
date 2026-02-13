@@ -1,625 +1,459 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   Image,
-  Dimensions,
-  Platform,
+  Pressable,
+  StatusBar,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { MaterialIcons } from "@expo/vector-icons";
+import Svg, { Circle } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import { GlassCard } from "../../components/ui/GlassCard";
+import { Stitch } from "../../constants/theme";
 
-type VideoCard = {
-  id: string;
-  title: string;
-  meta: string;
-  duration: string;
-  imageUrl: string;
-  alt: string;
-};
+const AVATAR =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCzg_bncn8v8i9GmP4pe6cJr8gcIf1XFYkAwXD0iAhi3_kr0BYR3hZ3I99J5czhyYcol3ibNzhbj7fgJKhdlkbGSvniLzEtJ54AEh4_IySXgYCHhYH-MxDPM2jMxtCxnj6dIv66t47iJ3NaOKncVnzZto3AKckw4YwPIC8sirgUvrc6uczCc2RaP7rIDop6CE_lZ2VXmCmbS7TujBTSBjY8F_cASGCwD01dUgbgHx96IOs-udQ1Jjlwv7mxYVLGDrg2eo4ghjuwm68";
 
-const VIDEOS: VideoCard[] = [
-  {
-    id: "1",
-    title: "Yoga para la ansiedad nocturna",
-    meta: "Bienestar • 2.4k vistas",
-    duration: "12:40",
-    alt: "Yoga nocturno",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDqOyFiYAp1HsOFeFU3zUDmCh2QNgnT0ZXxbwhEc-FjqmEc5H-vfB1tabh9dan1qcVj6zJ1p8oYlh2bmJUtjEHYjwwpyT4KPCZTxzpgqaE6BTJARvvTAhHZlhqeVtLcK1PABUqpxe7BMCCcrEMP4WDgp5cBSFRwLx1Um--51etb1meuFjdIuIw8bHx4vnM04tcWyoZ7Jw-pGJJSxJjT_dXn9nm-0PxHfac7L1glu1F24sQkQiNv_gWiHuIl9uaaRVq7e8a77j9yKUq2",
-  },
-  {
-    id: "2",
-    title: "Hacer compost en casa: Guía rápida",
-    meta: "Medio ambiente • 1.8k vistas",
-    duration: "05:15",
-    alt: "Compostaje",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuD75l5q32hpPycA6JuXZzs5mQUsmixYHr0qOWh-hBaO_w_TR5AQ5D1LTd1_Zb2pTdf8t87SXRO-7YNc5o2ykMoY9BNLUbs3vNQQ4m3sFh0lXzZe5i8AqecZxr7_zMkQ45eOKHS5MTjSe88GfFU3GOtPM_i_bwomUAkYcMUXsU5g_-h6VbH7VeGU57BbSe8BD9raiibkq2tUAxgNd48KHLTa6jOqpePCsG0d9JRUFC4ze8ftN4vvKdETpjWNrdHVyRLsNaXPOvHpK73O",
-  },
-];
+const HERO =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDdguwHSGWzeebuvqDDbvKzkQB2NCV9UKhwCSBI5dGknXFounwX0mQJF7QKQ4w8qcx9AbfNe1txMAGk_6y6-GHz54hz8pM3tgZ2yKoDGSt0k_KI1jrbwwXazrlJyxvay4AFaEoBjObDeWzbV5rFRsodBUkJehvgc-PXRJ0LzJwpSb1ybjM-vDTK0WGK0kl9HqgYbZHhsx5HxFeznIY2DpeNvcFxb654xN4VlxuZ82UOZRfjxoNdFGfAn3n1F-zwIlu9zNrnBsvMM8k";
 
-const START_HERE = [
-  { id: "p1", icon: "auto-awesome-motion", label: "Programas guiados" as const },
-  { id: "p2", icon: "play-circle-outline", label: "Videos cortos" as const },
-  { id: "p3", icon: "stars", label: "Recomendado para hoy" as const },
-];
+const CONTINUE_1 =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCsoMU8b-9L8sXrOU-nXffg7PbRFCexFzFGnmtjtAIZX8tmUymUleCYmPkEG8KHmkwb4QxtNCLE6eDFmLp-HR-ntbFTzpQeNpnFBinDAWCVHro7dqfO2RQ8a-EHU5mceUEttZ-0LekrrM5twWpq5IDCanaeqCptg9N2SPeI8I1Zg1Ahy9Iqq_rhwiic4seGCk71vHMtr1Yyomvf5Sywo7cnv0RurqoRNuzwrZJV1n_mIKxhDOn-B1P0w_5-jRKHC9HD4PGuNee32A0";
 
-const CATEGORIES = [
-  { id: "c1", icon: "fitness-center", label: "Actividad física", border: "cyan" as const },
-  { id: "c2", icon: "eco", label: "Medio ambiente", border: "green" as const },
-  { id: "c3", icon: "self-improvement", label: "Bienestar", border: "violet" as const },
-  { id: "c4", icon: "groups", label: "Comunidad", border: "blue" as const },
-];
+const CONTINUE_2 =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuBU9dEJudkJE_tnsFMJ3ExW0_cDK0iNCXWIDcaflT6LOEY9kaewZel0S4_vBXXCLqL479epKEaSs7xcmG-ZKX2GA0RQjW-OrjcQquy0ZtF-eG7zURZkZLAl_V52Y0R-6BzwcUX3QNKfl8ZTdfELD3fZzcNiV-vgmXgFvRccswjtbCC8WXQES2ma3JjnaTtpB18FYqnZGAtqefrdQaMmj_NtVjL9HOH8KdryBeZMuQG22X3pIFZDnx-M2rgNprAkBqI6FSxwoNzPQ7M";
+
+const REC_1 =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuAKlu_eA2a0JMcjp7mixBRFY0guUzODpGiwoDypwy_7AkzGEZg6JQK7V1cO3a47ndtUnkOz3KI3p_hxz4r22KyzPxh9uuyJTLjjtprXzFooylN7PQSpqR1sbwBQokPfP8OfA5iQbD0zZs9QdpVbxXTzGYibGzy4dFAkvb1gppuQht8u5GCyEu330aSJg1Xo8Lyww2IdSz9JMY9UH3CPtzKSOpxoH3-HtHRyp31tjlRudEU_102VvxUzsA2yPAt3KAwKAdxlVHM09ME";
+
+const REC_2 =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCwhitMUELTr7K8AE2qYUkf74d-koDJsORADmvazVNaYZRBhmImL56prdwFTMer954kEB6FBdBKGkbDHgRITORh9kiCV3BNGCH8aH4fWuQJJG2ejeI7VEUlagcGByrr7TyoK_mjymLKS_Xf-fkQkHvdVj6YjusQ-DFAizTURKK4avtzb_kHwSj7Zc_at0jZScLpAyyVJ_yQ7ESRP2hrWWC4wKcIFIqwPIQDzfrbEkW2uwNB4bAKK8QnOb5kwHLBXgDJ_OzgIsWQ_NM";
+
+function ProgressRing({ percent }: { percent: number }) {
+  const size = 80;
+  const stroke = 6;
+  const r = size / 2 - stroke;
+  const cx = size / 2;
+  const cy = size / 2;
+  const c = 2 * Math.PI * r;
+
+  const dashOffset = useMemo(() => {
+    const clamped = Math.max(0, Math.min(100, percent));
+    return c * (1 - clamped / 100);
+  }, [c, percent]);
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} style={{ transform: [{ rotate: "-90deg" }] }}>
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          stroke="rgba(255,255,255,0.10)"
+          strokeWidth={stroke}
+          fill="transparent"
+        />
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          stroke={Stitch.colors.primary}
+          strokeWidth={stroke}
+          fill="transparent"
+          strokeDasharray={`${c} ${c}`}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+        />
+      </Svg>
+      <View style={styles.ringLabel}>
+        <Text style={styles.ringLabelText}>{Math.round(percent)}%</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-  const screenW = Dimensions.get("window").width;
-
-  // Mimic “max-w-[430px]” centered shell (para tablets/desktop RN/web)
-  const shellW = Math.min(430, screenW);
-
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <View style={[styles.shell, { width: shellW }]}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            // Espacio real para que nada quede debajo del TabBar
-            { paddingBottom: tabBarHeight + 24 },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* HEADER */}
-          <View style={styles.header}>
-            <View style={styles.logoCircle} accessible accessibilityLabel="Logo Planta de Transformación">
-              <MaterialIcons name="filter-vintage" size={36} color={TOKENS.primary} />
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarWrap}>
+              <Image source={{ uri: AVATAR }} style={styles.avatar} />
             </View>
 
-            <Text style={styles.h1} accessibilityRole="header">
-              Planta de Transformación
-            </Text>
-
-            <Text style={styles.subtitle}>Pequeños hábitos, gran cambio</Text>
+            <View style={{ flex: 1 }}>
+              <View style={styles.helloRow}>
+                <Text style={styles.helloText}>Hola, Ivanna</Text>
+                <View style={styles.streakPill}>
+                  <MaterialIcons
+                    name="local-fire-department"
+                    size={14}
+                    color={Stitch.colors.warning}
+                  />
+                  <Text style={styles.streakText}>7</Text>
+                </View>
+              </View>
+              <Text style={styles.subtitle}>Planta de Transformación</Text>
+            </View>
           </View>
 
-          {/* QUICK ROUTINE */}
-          <View style={styles.sectionPad}>
-            <SecondaryCyanButton
-              icon="bolt"
-              label="Rutina rápida (5 min)"
-              onPress={() => {
-                // TODO: abrir rutina rápida
-              }}
+          <Pressable style={styles.notifBtn}>
+            <MaterialIcons name="notifications" size={22} color="#fff" />
+            <View style={styles.notifDot} />
+          </Pressable>
+        </View>
+
+        {/* Progress */}
+        <View style={styles.sectionPad}>
+          <GlassCard style={styles.progressCard}>
+            <ProgressRing percent={75} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.muted}>Meta diaria</Text>
+              <Text style={styles.titleMd}>¡Casi llegas!</Text>
+              <Text style={styles.primarySmall}>Sigue así, Ivanna</Text>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Acción del día */}
+        <View style={[styles.sectionPad, { marginTop: 10 }]}>
+          <Pressable style={styles.heroWrap}>
+            <Image source={{ uri: HERO }} style={styles.heroImg} />
+            <LinearGradient
+              colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.45)", "rgba(0,0,0,0.90)"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.heroContent}>
+              <Text style={styles.heroKicker}>Acción del día</Text>
+              <Text style={styles.heroTitle}>Rutina rápida (5 min)</Text>
+
+              <View style={styles.heroBottomRow}>
+                <View style={styles.heroMeta}>
+                  <MaterialIcons name="schedule" size={16} color="rgba(255,255,255,0.70)" />
+                  <Text style={styles.heroMetaText}>Hoy, 08:30 AM</Text>
+                </View>
+
+                <Pressable style={styles.heroBtn}>
+                  <Text style={styles.heroBtnText}>Comenzar</Text>
+                  <MaterialIcons name="play-arrow" size={18} color={Stitch.colors.bg} />
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </View>
+
+        {/* Continuar */}
+        <View style={{ marginTop: 18 }}>
+          <View style={[styles.rowBetween, styles.sectionPad]}>
+            <Text style={styles.sectionTitle}>Continuar</Text>
+            <Pressable>
+              <Text style={styles.sectionLink}>Ver todo</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.hList}
+          >
+            <ContinueCard image={CONTINUE_1} title="Meditación matutina" minutes="12 min" progress={0.66} />
+            <ContinueCard image={CONTINUE_2} title="Clase de reciclaje" minutes="8 min" progress={0.25} />
+          </ScrollView>
+        </View>
+
+        {/* Recomendado */}
+        <View style={[styles.sectionPad, { marginTop: 22 }]}>
+          <Text style={styles.sectionTitle}>Recomendado para ti</Text>
+
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <RecommendedRow
+              image={REC_1}
+              tag="Ambiental"
+              tagColor={Stitch.colors.primary}
+              tagBg="rgba(33,196,93,0.20)"
+              title="Huerto urbano en casa"
+              desc="Aprende a cultivar tus vegetales"
+            />
+            <RecommendedRow
+              image={REC_2}
+              tag="Actividad física"
+              tagColor="#60A5FA"
+              tagBg="rgba(59,130,246,0.20)"
+              title="Estiramiento básico"
+              desc="Mejora tu flexibilidad diaria"
             />
           </View>
+        </View>
 
-          {/* DESTACADOS */}
-          <SectionHeader title="Destacados" actionLabel="Ver todo" onActionPress={() => {}} />
-
-          <HorizontalRail contentPadding={TOKENS.px}>
-            {VIDEOS.map((v) => (
-              <VideoCardItem key={v.id} card={v} />
-            ))}
-          </HorizontalRail>
-
-          {/* START HERE */}
-          <SectionTitleOnly title="Empieza por aquí" />
-
-          <HorizontalRail contentPadding={TOKENS.px}>
-            {START_HERE.map((item) => (
-              <StartHereCard key={item.id} icon={item.icon} label={item.label} />
-            ))}
-          </HorizontalRail>
-
-          {/* CATEGORIES */}
-          <SectionTitleOnly title="Categorías" />
-
-          <View style={styles.categoriesGrid}>
-            {CATEGORIES.map((c) => (
-              <CategoryCard key={c.id} icon={c.icon} label={c.label} border={c.border} />
-            ))}
-          </View>
-
-          {/* CTA (YA NO ES ABSOLUTO, NO TAPA EL TAB BAR) */}
-          <View style={[styles.ctaSection, { paddingBottom: 12 + Math.max(0, insets.bottom * 0) }]}>
-            <View style={styles.ctaCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ctaKicker}>Tu camino te espera</Text>
-                <Text style={styles.ctaTitle}>Guarda tu progreso</Text>
-              </View>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Iniciar sesión"
-                onPress={() => {}}
-                style={({ pressed }) => [styles.loginBtn, pressed && styles.pressed]}
-              >
-                <Text style={styles.loginBtnText}>Iniciar sesión</Text>
-              </Pressable>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </View>
   );
 }
 
-/* ---------- Components ---------- */
-
-function PrimaryButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-    >
-      <MaterialIcons name={icon} size={20} color="#fff" />
-      <Text style={styles.primaryBtnText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function SecondaryCyanButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.cyanBtn, pressed && styles.pressed]}
-    >
-      <MaterialIcons name={icon} size={20} color={TOKENS.secondaryCyan} />
-      <Text style={styles.cyanBtnText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function SectionHeader({
+function ContinueCard({
+  image,
   title,
-  actionLabel,
-  onActionPress,
+  minutes,
+  progress,
 }: {
+  image: string;
   title: string;
-  actionLabel: string;
-  onActionPress: () => void;
+  minutes: string;
+  progress: number;
 }) {
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionLabel}>{title}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={actionLabel}
-        onPress={onActionPress}
-        hitSlop={10}
-      >
-        <Text style={styles.sectionAction}>{actionLabel}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function SectionTitleOnly({ title }: { title: string }) {
-  return (
-    <View style={styles.sectionTitleOnly}>
-      <Text style={styles.sectionLabel}>{title}</Text>
-    </View>
-  );
-}
-
-function HorizontalRail({
-  children,
-  contentPadding,
-}: {
-  children: React.ReactNode;
-  contentPadding: number;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={[styles.rail, { paddingHorizontal: contentPadding }]}
-    >
-      {children}
-    </ScrollView>
-  );
-}
-
-function VideoCardItem({ card }: { card: VideoCard }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Video: ${card.title}`}
-      onPress={() => {}}
-      style={({ pressed }) => [styles.videoCard, pressed && styles.pressed]}
-    >
-      <View style={styles.videoThumbWrap}>
-        <Image source={{ uri: card.imageUrl }} style={styles.videoThumb} accessibilityLabel={card.alt} />
-        <View style={styles.durationBadge}>
-          <Text style={styles.durationText}>{card.duration}</Text>
+    <GlassCard style={styles.contCard}>
+      <View style={styles.contImgWrap}>
+        <Image source={{ uri: image }} style={styles.contImg} />
+        <View style={styles.timePill}>
+          <Text style={styles.timePillText}>{minutes}</Text>
         </View>
       </View>
 
-      <Text style={styles.videoTitle} numberOfLines={1}>
-        {card.title}
-      </Text>
-      <Text style={styles.videoMeta} numberOfLines={1}>
-        {card.meta}
-      </Text>
-    </Pressable>
+      <View style={styles.contBody}>
+        <Text style={styles.contTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+        </View>
+      </View>
+    </GlassCard>
   );
 }
 
-function StartHereCard({
-  icon,
-  label,
+function RecommendedRow({
+  image,
+  tag,
+  tagColor,
+  tagBg,
+  title,
+  desc,
 }: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  label: string;
+  image: string;
+  tag: string;
+  tagColor: string;
+  tagBg: string;
+  title: string;
+  desc: string;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={() => {}}
-      style={({ pressed }) => [styles.startCard, pressed && styles.pressed]}
-    >
-      <MaterialIcons name={icon} size={22} color={TOKENS.violet} />
-      <Text style={styles.startCardText}>{label}</Text>
-    </Pressable>
+    <GlassCard style={styles.recRow}>
+      <Image source={{ uri: image }} style={styles.recImg} />
+      <View style={{ flex: 1 }}>
+        <View style={[styles.tagPill, { backgroundColor: tagBg }]}>
+          <Text style={[styles.tagText, { color: tagColor }]}>{tag}</Text>
+        </View>
+        <Text style={styles.recTitle}>{title}</Text>
+        <Text style={styles.recDesc} numberOfLines={1}>
+          {desc}
+        </Text>
+      </View>
+      <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.30)" />
+    </GlassCard>
   );
 }
-
-function CategoryCard({
-  icon,
-  label,
-  border,
-}: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  label: string;
-  border: "cyan" | "green" | "violet" | "blue";
-}) {
-  const borderStyle =
-    border === "cyan"
-      ? styles.borderCyan
-      : border === "green"
-      ? styles.borderGreen
-      : border === "blue"
-      ? styles.borderBlue
-      : styles.borderViolet;
-
-  const iconColor =
-    border === "cyan"
-      ? TOKENS.secondaryCyan
-      : border === "green"
-      ? TOKENS.secondaryGreen
-      : border === "blue"
-      ? TOKENS.blue
-      : TOKENS.primary;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Categoría: ${label}`}
-      onPress={() => {}}
-      style={({ pressed }) => [styles.catCard, borderStyle, pressed && styles.pressed]}
-    >
-      <MaterialIcons name={icon} size={22} color={iconColor} />
-      <Text style={styles.catText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-/* ---------- Design tokens ---------- */
-
-const TOKENS = {
-  backgroundDark: "#0A0A0A",
-  primary: "#e619e5",
-  secondaryCyan: "#00f2ff",
-  secondaryGreen: "#39ff14",
-  textMuted: "#9ca3af",
-  gray500: "#6b7280",
-  gray600: "#4b5563",
-  blue: "#60a5fa",
-  violet: "#a78bfa",
-  px: 24,
-};
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: TOKENS.backgroundDark,
-    alignItems: "center",
-  },
-  shell: {
-    flex: 1,
-    backgroundColor: TOKENS.backgroundDark,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: "rgba(230,25,229,0.10)",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.35,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 10 },
-      },
-      android: { elevation: 10 },
-    }),
-  },
+  screen: { flex: 1, backgroundColor: Stitch.colors.bg },
+  content: { paddingBottom: 24 },
 
-  scrollContent: {
-    paddingTop: 8,
-  },
+  sectionPad: { paddingHorizontal: 24 },
 
   header: {
-    paddingHorizontal: TOKENS.px,
-    paddingTop: 24,
-    paddingBottom: 24,
-    alignItems: "center",
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: "rgba(230,25,229,1)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-    ...Platform.select({
-      ios: { shadowColor: TOKENS.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
-      android: { elevation: 6 },
-    }),
-  },
-  h1: {
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-    color: "#fff",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 12,
-    fontWeight: "300",
-    letterSpacing: 0.6,
-    fontStyle: "italic",
-    color: TOKENS.textMuted,
-    marginBottom: 32,
-    textAlign: "center",
-  },
-
-  primaryBtn: {
-    width: "100%",
-    paddingVertical: 16,
-    backgroundColor: TOKENS.primary,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    ...Platform.select({
-      ios: { shadowColor: TOKENS.primary, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
-      android: { elevation: 6 },
-    }),
-  },
-  primaryBtnText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-
-  sectionPad: {
-    paddingHorizontal: TOKENS.px,
-    marginBottom: 40,
-  },
-  cyanBtn: {
-    width: "100%",
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,242,255,0.30)",
-    backgroundColor: "rgba(0,242,255,0.05)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    ...Platform.select({
-      ios: { shadowColor: TOKENS.secondaryCyan, shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
-      android: { elevation: 4 },
-    }),
-  },
-  cyanBtnText: {
-    color: TOKENS.secondaryCyan,
-    fontWeight: "800",
-    fontSize: 14,
-  },
-
-  sectionHeader: {
-    paddingHorizontal: TOKENS.px,
-    marginBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  sectionTitleOnly: {
-    paddingHorizontal: TOKENS.px,
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    opacity: 0.8,
-  },
-  sectionAction: {
-    color: TOKENS.primary,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+    paddingRight: 12,
   },
 
-  rail: {
-    gap: 16,
-    paddingBottom: 40,
-  },
-
-  videoCard: {
-    width: 256,
-  },
-  videoThumbWrap: {
-    width: "100%",
-    borderRadius: 12,
+  avatarWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
     overflow: "hidden",
-    marginBottom: 8,
-    aspectRatio: 16 / 9,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    position: "relative",
+    borderWidth: 2,
+    borderColor: "rgba(33,196,93,0.20)",
   },
-  videoThumb: {
-    width: "100%",
-    height: "100%",
-    opacity: 0.82,
-  },
-  durationBadge: {
-    position: "absolute",
-    right: 8,
-    bottom: 8,
-    backgroundColor: TOKENS.primary,
+  avatar: { width: "100%", height: "100%" },
+
+  helloRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  helloText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+
+  streakPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 9999,
+    borderRadius: 999,
+    backgroundColor: "rgba(249,115,22,0.20)",
+    borderWidth: 1,
+    borderColor: "rgba(249,115,22,0.30)",
   },
-  durationText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  videoTitle: {
-    color: "#fff",
-    fontSize: 14,
+  streakText: { color: Stitch.colors.warning, fontSize: 12, fontWeight: "800" },
+
+  subtitle: {
+    color: Stitch.colors.textMuted,
+    fontSize: 11,
     fontWeight: "700",
-  },
-  videoMeta: {
-    color: TOKENS.gray500,
-    fontSize: 12,
+    letterSpacing: 1.2,
     marginTop: 2,
-  },
-
-  startCard: {
-    width: 160,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.30)",
-    backgroundColor: "rgba(139,92,246,0.10)",
-    gap: 10,
-  },
-  startCardText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "500",
-    lineHeight: 18,
-  },
-
-  categoriesGrid: {
-    paddingHorizontal: TOKENS.px,
-    paddingBottom: 24,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-  },
-  catCard: {
-    width: "47%",
-    aspectRatio: 1,
-    padding: 16,
-    borderRadius: 12,
-    justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.02)",
-  },
-  catText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-
-  borderCyan: { borderWidth: 1, borderColor: "rgba(0,242,255,0.30)", backgroundColor: "rgba(0,242,255,0.05)" },
-  borderGreen: { borderWidth: 1, borderColor: "rgba(57,255,20,0.30)", backgroundColor: "rgba(57,255,20,0.05)" },
-  borderViolet: { borderWidth: 1, borderColor: "rgba(139,92,246,0.30)", backgroundColor: "rgba(139,92,246,0.05)" },
-  borderBlue: { borderWidth: 1, borderColor: "rgba(59,130,246,0.30)", backgroundColor: "rgba(59,130,246,0.05)" },
-
-  // CTA al final (no absoluta)
-  ctaSection: {
-    paddingHorizontal: TOKENS.px,
-    paddingTop: 8,
-  },
-  ctaCard: {
-    backgroundColor: "rgba(0,0,0,0.80)",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(230,25,229,0.30)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
-      android: { elevation: 8 },
-    }),
-  },
-  ctaKicker: {
-    fontSize: 10,
-    color: TOKENS.textMuted,
-    letterSpacing: 1.5,
     textTransform: "uppercase",
   },
-  ctaTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#fff",
-    marginTop: 2,
-  },
-  loginBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
+
+  notifBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: TOKENS.primary,
+    borderColor: Stitch.colors.border,
+    backgroundColor: Stitch.colors.card,
+    overflow: "hidden",
   },
-  loginBtnText: {
-    color: TOKENS.primary,
-    fontSize: 14,
-    fontWeight: "800",
+  notifDot: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: Stitch.colors.primary,
+    borderWidth: 2,
+    borderColor: Stitch.colors.bg,
   },
 
-  pressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.95,
+  progressCard: {
+    borderRadius: 24,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
   },
+  ringLabel: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  ringLabelText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+
+  muted: { color: Stitch.colors.textSoft, fontSize: 14, fontWeight: "600" },
+  titleMd: { color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 2 },
+  primarySmall: { color: Stitch.colors.primary, fontSize: 12, fontWeight: "800", marginTop: 6 },
+
+  heroWrap: {
+    borderRadius: 24,
+    overflow: "hidden",
+    height: 220,
+    backgroundColor: "#111",
+  },
+  heroImg: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
+  heroContent: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 24 },
+
+  heroKicker: {
+    color: Stitch.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  heroTitle: { color: "#fff", fontSize: 26, fontWeight: "900", marginBottom: 14 },
+
+  heroBottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  heroMeta: { flexDirection: "row", alignItems: "center", gap: 6 },
+  heroMetaText: { color: "rgba(255,255,255,0.70)", fontSize: 14, fontWeight: "600" },
+
+  heroBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: Stitch.colors.primary,
+    shadowColor: Stitch.colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  heroBtnText: { color: Stitch.colors.bg, fontWeight: "900", fontSize: 14 },
+
+  rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionTitle: { color: "#fff", fontSize: 18, fontWeight: "900" },
+  sectionLink: {
+    color: Stitch.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+
+  hList: { paddingHorizontal: 24, gap: 14 },
+
+  contCard: { width: 240, borderRadius: 18 },
+  contImgWrap: { height: 128, overflow: "hidden" },
+  contImg: { width: "100%", height: "100%" },
+
+  timePill: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    backgroundColor: "rgba(0,0,0,0.60)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  timePillText: { color: "#fff", fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
+
+  contBody: { padding: 14, gap: 10 },
+  contTitle: { color: "#fff", fontSize: 14, fontWeight: "800" },
+
+  progressTrack: {
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressFill: { height: "100%", backgroundColor: Stitch.colors.primary },
+
+  recRow: {
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  recImg: { width: 80, height: 80, borderRadius: 14 },
+
+  tagPill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  tagText: { fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
+
+  recTitle: { color: "#fff", fontSize: 16, fontWeight: "900", marginTop: 6 },
+  recDesc: { color: Stitch.colors.textMuted, fontSize: 12, fontWeight: "600", marginTop: 2 },
 });

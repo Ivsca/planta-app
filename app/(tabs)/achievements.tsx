@@ -1,143 +1,402 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { Stitch } from "../../constants/theme";
+import { GlassCard } from "../../components/ui/GlassCard";
 
-
-type Achievement = {
+type Medal = {
   id: string;
   title: string;
-  description: string;
-  unlocked: boolean;
+  desc: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  locked?: boolean;
 };
 
 export default function AchievementsScreen() {
-  const achievements = useMemo<Achievement[]>(
+  // Mock (luego lo conectas a backend/perfil)
+  const level = 12;
+  const xp = 850;
+  const xpMax = 1000;
+  const streakDays = 7;
+  const challengesDone = 24;
+
+  const progress = Math.max(0, Math.min(1, xp / xpMax));
+
+  const medals: Medal[] = useMemo(
     () => [
       {
-        id: "a1",
-        title: "Primer paso",
-        description: "Entraste a la app por primera vez.",
-        unlocked: true,
+        id: "m1",
+        title: "Iniciador",
+        desc: "Primer reto completado",
+        icon: "eco",
       },
       {
-        id: "a2",
-        title: "Constancia",
-        description: "Completaste 3 sesiones en la semana.",
-        unlocked: false,
+        id: "m2",
+        title: "Madrugador",
+        desc: "7 AM racha activa",
+        icon: "wb-sunny",
       },
       {
-        id: "a3",
-        title: "Explorador/a",
-        description: "Visitaste la sección Descubrir.",
-        unlocked: true,
+        id: "m3",
+        title: "Maestro de Planta",
+        desc: "Completa 50 procesos",
+        icon: "factory",
+        locked: true,
+      },
+      {
+        id: "m4",
+        title: "Guardián Nocturno",
+        desc: "Eficiencia 100% de noche",
+        icon: "shield-moon",
+        locked: true,
       },
     ],
     []
   );
 
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Logros</Text>
+    <View style={styles.screen}>
+      {/* Sticky header */}
+      <View style={styles.header}>
+      <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={styles.headerOverlay} />
 
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTitle}>Progreso</Text>
-        <Text style={styles.summaryValue}>
-          {unlockedCount} / {achievements.length} desbloqueados
-        </Text>
-      </View>
+      <Text style={styles.headerTitleLeft}>Logros</Text>
 
-      <FlatList
-        data={achievements}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        renderItem={({ item }) => (
-          <View style={[styles.card, !item.unlocked && styles.cardLocked]}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={[styles.badge, item.unlocked ? styles.badgeOn : styles.badgeOff]}>
-                {item.unlocked ? "Desbloqueado" : "Bloqueado"}
+      <Pressable style={styles.headerBtn} hitSlop={10} onPress={() => {}}>
+        <MaterialIcons name="share" size={20} color={Stitch.colors.primary} />
+      </Pressable>
+    </View>
+
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Level Progress */}
+        <GlassCard style={styles.levelCard}>
+          <View style={styles.levelTop}>
+            <View>
+              <Text style={styles.kicker}>Tu Progreso</Text>
+              <Text style={styles.levelTitle}>Nivel {level}</Text>
+            </View>
+
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.xpText}>
+                {xp} / {xpMax} XP
               </Text>
             </View>
-            <Text style={styles.cardDesc}>{item.description}</Text>
           </View>
-        )}
-      />
+
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+          </View>
+
+          <Text style={styles.levelHint}>
+            Estás a solo {xpMax - xp} XP de alcanzar el nivel {level + 1}.
+          </Text>
+        </GlassCard>
+
+        {/* Stats row */}
+        <View style={styles.statsRow}>
+          <GlassCard style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: "rgba(249,115,22,0.20)" }]}>
+              <MaterialIcons name="local-fire-department" size={26} color="#F97316" />
+            </View>
+            <Text style={styles.statValue}>{streakDays} Días</Text>
+            <Text style={styles.statLabel}>Racha Actual</Text>
+          </GlassCard>
+
+          <GlassCard style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: "rgba(33,196,93,0.20)" }]}>
+              <MaterialIcons name="task-alt" size={26} color={Stitch.colors.primary} />
+            </View>
+            <Text style={styles.statValue}>{challengesDone}</Text>
+            <Text style={styles.statLabel}>Retos Completados</Text>
+          </GlassCard>
+        </View>
+
+        {/* Medals */}
+        <View style={styles.medalsHeader}>
+          <Text style={styles.sectionTitle}>Medallas Obtenidas</Text>
+          <View style={styles.countPill}>
+            <Text style={styles.countPillText}>6 / 20</Text>
+          </View>
+        </View>
+
+        <View style={styles.medalsGrid}>
+          {medals.map((m) => (
+            <MedalItem key={m.id} medal={m} />
+          ))}
+        </View>
+
+        {/* CTA */}
+        <Pressable style={styles.ctaBtn} onPress={() => {}}>
+          <Text style={styles.ctaText}>Ver todos los retos</Text>
+          <MaterialIcons name="trending-flat" size={20} color={Stitch.colors.primary} />
+        </Pressable>
+
+        <View style={{ height: 18 }} />
+      </ScrollView>
+    </View>
+  );
+}
+
+function MedalItem({ medal }: { medal: Medal }) {
+  const locked = !!medal.locked;
+
+  return (
+    <View style={[styles.medalItem, locked && { opacity: 0.55 }]}>
+      {/* Glow / badge */}
+      <View style={styles.medalGlow} />
+
+      <View
+        style={[
+          styles.medalCircle,
+          locked ? styles.medalLocked : styles.medalUnlocked,
+        ]}
+      >
+        <MaterialIcons
+          name={medal.icon}
+          size={32}
+          color={locked ? "rgba(255,255,255,0.35)" : Stitch.colors.primary}
+        />
+      </View>
+
+      <Text style={[styles.medalTitle, locked && { color: "rgba(255,255,255,0.60)" }]}>
+        {medal.title}
+      </Text>
+      <Text style={styles.medalDesc} numberOfLines={2}>
+        {medal.desc}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0B0B0F",
-    paddingHorizontal: 20,
-    paddingTop: 56,
-  },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 16,
-  },
-  summaryCard: {
-    backgroundColor: "#15151D",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  summaryTitle: {
-    color: "#9CA3AF",
-    fontSize: 14,
-  },
-  summaryValue: {
-    color: "#D946EF",
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: 6,
-  },
-  card: {
-    backgroundColor: "#15151D",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardLocked: {
-    opacity: 0.55,
-  },
-  cardHeader: {
+  screen: { flex: 1, backgroundColor: Stitch.colors.bg },
+
+ header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
-  },
-  cardTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
-  },
-  cardDesc: {
-    color: "#9CA3AF",
-    fontSize: 14,
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  badge: {
-    fontSize: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(33,196,93,0.10)",
     overflow: "hidden",
   },
-  badgeOn: {
-    color: "#0B0B0F",
-    backgroundColor: "#D946EF",
+
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitleLeft: {
+    color: "#fff",
+    fontSize: 24,        // igual que Home/Retos
+    fontWeight: "900",
+    letterSpacing: -0.2,
+  },
+
+
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
+
+  // Level card
+  levelCard: {
+    borderRadius: 18,
+    padding: 16,
+    borderColor: "rgba(33,196,93,0.10)",
+    backgroundColor: "rgba(33,196,93,0.05)",
+  },
+  levelTop: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  kicker: {
+    color: Stitch.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  levelTitle: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.4,
+  },
+  xpText: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
     fontWeight: "700",
   },
-  badgeOff: {
-    color: "#E5E7EB",
-    backgroundColor: "#2A2A35",
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: Stitch.colors.primary,
+    borderRadius: 999,
+  },
+  levelHint: {
+    marginTop: 12,
+    color: "rgba(255,255,255,0.60)",
+    fontSize: 12,
     fontWeight: "600",
+    fontStyle: "italic",
+    lineHeight: 16,
+  },
+
+  // Stats
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 16,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  statIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  statValue: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    lineHeight: 24,
+  },
+  statLabel: {
+    marginTop: 8,
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
+
+  // Medals
+  medalsHeader: {
+    marginTop: 22,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  countPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(33,196,93,0.18)",
+  },
+  countPillText: {
+    color: Stitch.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  medalsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 18,
+  },
+  medalItem: {
+    width: "48%",
+    alignItems: "center",
+  },
+  medalGlow: {
+    position: "absolute",
+    top: 6,
+    width: 92,
+    height: 92,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.18)",
+    // “blur” fake (mejor que nada sin libs extra)
+    opacity: 0.7,
+    transform: [{ scale: 1.08 }],
+  },
+  medalCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    marginBottom: 10,
+  },
+  medalUnlocked: {
+    borderColor: Stitch.colors.primary,
+    backgroundColor: "rgba(33,196,93,0.12)",
+  },
+  medalLocked: {
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  medalTitle: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  medalDesc: {
+    marginTop: 4,
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 14,
+  },
+
+  // CTA
+  ctaBtn: {
+    marginTop: 22,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: Stitch.colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "rgba(0,0,0,0.10)",
+  },
+  ctaText: {
+    color: Stitch.colors.primary,
+    fontSize: 14,
+    fontWeight: "900",
   },
 });
