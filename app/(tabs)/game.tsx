@@ -202,6 +202,7 @@ export default function ChallengesScreen() {
 
   return (
     <View style={styles.screen}>
+      <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.h1}>Retos</Text>
@@ -244,21 +245,23 @@ export default function ChallengesScreen() {
 
           <View style={{ marginTop: 12, gap: 12 }}>
             {CHALLENGES.map((c) => (
-              <GlassCard key={c.id} style={styles.challengeCard}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.rowTop}>
-                    <Text style={styles.tag}>{c.tag.toUpperCase()}</Text>
-                    <View style={styles.statusPill}>
-                      <Text style={styles.statusText}>{c.status}</Text>
+              <Pressable key={c.id} onPress={() => requireAuth(() => {})}>
+                <GlassCard style={styles.challengeCard}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.rowTop}>
+                      <Text style={styles.tag}>{c.tag.toUpperCase()}</Text>
+                      <View style={styles.statusPill}>
+                        <Text style={styles.statusText}>{c.status}</Text>
+                      </View>
                     </View>
+
+                    <Text style={styles.challengeTitle}>{c.title}</Text>
+                    <Text style={styles.challengeDesc}>{c.desc}</Text>
                   </View>
 
-                  <Text style={styles.challengeTitle}>{c.title}</Text>
-                  <Text style={styles.challengeDesc}>{c.desc}</Text>
-                </View>
-
-                <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.25)" />
-              </GlassCard>
+                  <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.25)" />
+                </GlassCard>
+              </Pressable>
             ))}
           </View>
         </View>

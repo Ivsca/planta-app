@@ -1,29 +1,114 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
+  StyleSheet,
   Switch,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Stitch } from "../../constants/theme";
+import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { Stitch } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
+import { useRequireAuth } from "../../hooks/use-require-auth";
 
 const AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCwrJxdLJcdBEJDPPz2M9uAgpBh9PS9fSNrRCyp9DhNJJ5yRgCnqVZ68A4KD_8C_vmwpmZEMZVqxhS7ueUa00Bu4wcAjJSBdWzgWVJL9dKVrK_MZt6lVLyoU11HxmWpWLE0ag-m90PEHk5CgEkpb5r94qAOTKr7pAiu8ULK4LZaxN4ppZg2rBYdr-XVX1jXveeOSWXr5Kmnj48Q4qYM-DHzWNyDdUKiptz6Kh50Aim4srGpzR2yXzEwR0d_-GdbQq5M96-iCjtq_2E";
 
 export default function ProfileScreen() {
   const [notifications, setNotifications] = useState(true);
+  const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+
+  /* ── Estado de edición ── */
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editError, setEditError] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const displayName = isAuthenticated && user ? user.name : "Visitante";
+
+  const startEditing = () => {
+    setEditName(user?.name || "");
+    setEditPassword("");
+    setEditError("");
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditError("");
+  };
+
+  const handleSave = async () => {
+    setEditError("");
+
+    const data: { name?: string; password?: string } = {};
+
+    if (editName.trim() && editName.trim() !== user?.name) {
+      data.name = editName.trim();
+    }
+    if (editPassword) {
+      if (editPassword.length < 6) {
+        setEditError("La contraseña debe tener al menos 6 caracteres");
+        return;
+      }
+      data.password = editPassword;
+    }
+
+    if (Object.keys(data).length === 0) {
+      setIsEditing(false);
+      return;
+    }
+
+    setEditLoading(true);
+    const result = await updateProfile(data);
+    setEditLoading(false);
+
+    if (result.ok) {
+      setIsEditing(false);
+    } else {
+      setEditError(result.error || "Error al actualizar");
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Eliminar cuenta",
+      "¿Estás seguro? Esta acción no se puede deshacer. Se borrarán todos tus datos permanentemente.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            setDeleteLoading(true);
+            const result = await deleteAccount();
+            setDeleteLoading(false);
+            if (!result.ok) {
+              Alert.alert("Error", result.error || "No se pudo eliminar la cuenta");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.screen}>
+      <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
       <View style={styles.header}>
         <Text style={styles.h1}>Perfil</Text>
 
-        <Pressable style={styles.iconBtn} hitSlop={10} onPress={() => {}}>
+        <Pressable style={styles.iconBtn} hitSlop={10} onPress={() => requireAuth(() => {})}>
           <MaterialIcons name="settings" size={20} color={Stitch.colors.primary} />
         </Pressable>
       </View>
@@ -41,14 +126,86 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Text style={styles.name}>Ivanna</Text>
+          {isEditing ? (
+            /* ── Modo edición ── */
+            <View style={styles.editSection}>
+              <Text style={styles.editLabel}>Nombre</Text>
+              <View style={styles.editInputWrap}>
+                <MaterialIcons name="person" size={18} color="rgba(255,255,255,0.35)" />
+                <TextInput
+                  style={styles.editInput}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Tu nombre"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  autoCapitalize="words"
+                />
+              </View>
 
-          <View style={styles.metaRow}>
-            <View style={styles.levelPill}>
-              <Text style={styles.levelText}>Nivel 3</Text>
+              <Text style={styles.editLabel}>Correo (no editable)</Text>
+              <View style={[styles.editInputWrap, { opacity: 0.5 }]}>
+                <MaterialIcons name="email" size={18} color="rgba(255,255,255,0.35)" />
+                <Text style={styles.editInputDisabled}>{user?.email}</Text>
+                <MaterialIcons name="lock" size={14} color="rgba(255,255,255,0.25)" />
+              </View>
+
+              <Text style={styles.editLabel}>Nueva contraseña (opcional)</Text>
+              <View style={styles.editInputWrap}>
+                <MaterialIcons name="lock" size={18} color="rgba(255,255,255,0.35)" />
+                <TextInput
+                  style={styles.editInput}
+                  value={editPassword}
+                  onChangeText={setEditPassword}
+                  placeholder="Dejar vacío para no cambiar"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  secureTextEntry
+                />
+              </View>
+
+              {!!editError && (
+                <View style={styles.editErrorRow}>
+                  <MaterialIcons name="error-outline" size={14} color="#EF4444" />
+                  <Text style={styles.editErrorText}>{editError}</Text>
+                </View>
+              )}
+
+              <View style={styles.editBtns}>
+                <Pressable style={styles.editCancelBtn} onPress={cancelEditing}>
+                  <Text style={styles.editCancelText}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.editSaveBtn, editLoading && { opacity: 0.7 }]}
+                  onPress={handleSave}
+                  disabled={editLoading}
+                >
+                  {editLoading ? (
+                    <ActivityIndicator color={Stitch.colors.bg} size="small" />
+                  ) : (
+                    <Text style={styles.editSaveText}>Guardar</Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
-            <Text style={styles.metaText}>Planta de Transformación</Text>
-          </View>
+          ) : (
+            /* ── Modo visualización ── */
+            <>
+              <Text style={styles.name}>{displayName}</Text>
+
+              <View style={styles.metaRow}>
+                <View style={styles.levelPill}>
+                  <Text style={styles.levelText}>Nivel 3</Text>
+                </View>
+                <Text style={styles.metaText}>Planta de Transformación</Text>
+              </View>
+
+              {isAuthenticated && (
+                <Pressable style={styles.editProfileBtn} onPress={startEditing}>
+                  <MaterialIcons name="edit" size={16} color={Stitch.colors.primary} />
+                  <Text style={styles.editProfileText}>Editar perfil</Text>
+                </Pressable>
+              )}
+            </>
+          )}
         </View>
 
         {/* General */}
@@ -101,12 +258,39 @@ export default function ProfileScreen() {
           <MenuRow icon="help" title="Ayuda" onPress={() => {}} />
         </GlassCard>
 
-        {/* Logout */}
+        {/* Login / Logout */}
         <View style={styles.logoutWrap}>
-          <Pressable style={styles.logoutBtn} onPress={() => {}}>
-            <MaterialIcons name="logout" size={18} color="rgba(255,255,255,0.55)" />
-            <Text style={styles.logoutText}>Cerrar sesión</Text>
-          </Pressable>
+          {isAuthenticated ? (
+            <>
+              <Pressable style={styles.logoutBtn} onPress={logout}>
+                <MaterialIcons name="logout" size={18} color="rgba(255,255,255,0.55)" />
+                <Text style={styles.logoutText}>Cerrar sesión</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.deleteBtn, deleteLoading && { opacity: 0.7 }]}
+                onPress={handleDeleteAccount}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator color="#EF4444" size="small" />
+                ) : (
+                  <>
+                    <MaterialIcons name="delete-forever" size={18} color="#EF4444" />
+                    <Text style={styles.deleteText}>Eliminar cuenta</Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              style={[styles.logoutBtn, { backgroundColor: Stitch.colors.primary, borderRadius: 999, paddingHorizontal: 24, paddingVertical: 12 }]}
+              onPress={() => requireAuth(() => {})}
+            >
+              <MaterialIcons name="login" size={18} color={Stitch.colors.bg} />
+              <Text style={[styles.logoutText, { color: Stitch.colors.bg, fontWeight: "900" }]}>Iniciar sesión</Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={{ height: 18 }} />
@@ -261,7 +445,7 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
 
-  logoutWrap: { marginTop: 18, alignItems: "center" },
+  logoutWrap: { marginTop: 18, alignItems: "center", gap: 12 },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -271,4 +455,115 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   logoutText: { color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: "700" },
+
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.25)",
+  },
+  deleteText: { color: "#EF4444", fontSize: 13, fontWeight: "700" },
+
+  /* ── Estilos de edición de perfil ── */
+  editProfileBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(33,196,93,0.20)",
+  },
+  editProfileText: {
+    color: Stitch.colors.primary,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  editSection: {
+    width: "100%",
+    marginTop: 16,
+  },
+  editLabel: {
+    color: "rgba(255,255,255,0.50)",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  editInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  editInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  editInputDisabled: {
+    flex: 1,
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  editErrorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  editErrorText: {
+    color: "#EF4444",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  editBtns: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+  },
+  editCancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  editCancelText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  editSaveBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: Stitch.colors.primary,
+  },
+  editSaveText: {
+    color: Stitch.colors.bg,
+    fontSize: 14,
+    fontWeight: "900",
+  },
 });
