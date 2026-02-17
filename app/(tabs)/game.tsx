@@ -15,14 +15,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Stitch } from "../../constants/theme";
-import { useRequireAuth } from "../../hooks/use-require-auth";
 
 /* ───────────────────────────────────────────────
-   URL DEL JUEGO  –  Cambia esta URL por tu build
-   Unity WebGL cuando lo tengas listo.
+   URL DEL JUEGO  –  Cambia esta URL por el build
+   Unity WebGL cuando se pueda descargar y listo.
    ─────────────────────────────────────────────── */
 const GAME_URL = "https://plays.org/game/recycle-hero/?utm_source=chatgpt.com";
 
@@ -68,6 +66,7 @@ function GameWebView({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState(false);
   const webviewRef = useRef<any>(null);
 
+  /* Timeout: si después de 20s sigue "cargando", quitamos el overlay */
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) setLoading(false);
@@ -82,25 +81,38 @@ function GameWebView({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <View style={[styles.gameContainer, { paddingTop: insets.top }]}>
+    <View style={[styles.gameContainer, { paddingTop: insets.top }]}>  
       <StatusBar barStyle="light-content" />
 
+      {/* Barra superior */}
       <View style={styles.gameBar}>
         <Pressable onPress={onClose} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={22} color="#fff" />
           <Text style={styles.backText}>Volver</Text>
         </Pressable>
+
         <Text style={styles.gameBarTitle}>Oracúlo-Juego</Text>
-        <Pressable onPress={handleRetry} style={styles.reloadBtn}>
+
+        <Pressable
+          onPress={handleRetry}
+          style={styles.reloadBtn}
+        >
           <MaterialIcons name="refresh" size={22} color="#fff" />
         </Pressable>
       </View>
 
+      {/* WebView (móvil) o iframe (web) con el juego */}
       <View style={{ flex: 1 }}>
         {Platform.OS === "web" ? (
           <iframe
             src={GAME_URL}
-            style={{ flex: 1, width: "100%", height: "100%", border: "none", backgroundColor: Stitch.colors.bg }}
+            style={{
+              flex: 1,
+              width: "100%",
+              height: "100%",
+              border: "none",
+              backgroundColor: Stitch.colors.bg,
+            }}
             allow="autoplay; fullscreen; gyroscope; accelerometer"
             allowFullScreen
             onLoad={() => setLoading(false)}
@@ -112,8 +124,15 @@ function GameWebView({ onClose }: { onClose: () => void }) {
             style={{ flex: 1, backgroundColor: Stitch.colors.bg }}
             onLoad={() => setLoading(false)}
             onLoadEnd={() => setLoading(false)}
-            onError={() => { setLoading(false); setError(true); }}
-            onHttpError={() => { setLoading(false); setError(true); }}
+            onError={() => {
+              setLoading(false);
+              setError(true);
+            }}
+            onHttpError={() => {
+              setLoading(false);
+              setError(true);
+            }}
+            /* Permite touch & gestos dentro del juego */
             originWhitelist={["*"]}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
@@ -129,6 +148,7 @@ function GameWebView({ onClose }: { onClose: () => void }) {
                 ? "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
                 : undefined
             }
+            /* Viewport correcto para el juego */
             injectedJavaScript={`
               const meta = document.createElement('meta');
               meta.name = 'viewport';
@@ -157,7 +177,10 @@ function GameWebView({ onClose }: { onClose: () => void }) {
               <MaterialIcons name="refresh" size={18} color={Stitch.colors.bg} />
               <Text style={styles.retryText}>Reintentar</Text>
             </Pressable>
-            <Pressable style={styles.openBrowserBtn} onPress={() => Linking.openURL(GAME_URL)}>
+            <Pressable
+              style={styles.openBrowserBtn}
+              onPress={() => Linking.openURL(GAME_URL)}
+            >
               <MaterialIcons name="open-in-new" size={16} color={Stitch.colors.primary} />
               <Text style={styles.openBrowserText}>Abrir en navegador</Text>
             </Pressable>
@@ -171,8 +194,8 @@ function GameWebView({ onClose }: { onClose: () => void }) {
 /* ── Pantalla principal: Retos + Hero ───────── */
 export default function ChallengesScreen() {
   const [playing, setPlaying] = useState(false);
-  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
 
+  /* Si el usuario toca "Jugar", mostramos el WebView a pantalla completa */
   if (playing) {
     return <GameWebView onClose={() => setPlaying(false)} />;
   }
@@ -187,7 +210,7 @@ export default function ChallengesScreen() {
 
         {/* HERO: Jugar */}
         <View style={styles.pad}>
-          <Pressable style={styles.heroWrap} onPress={() => requireAuth(() => setPlaying(true))}>
+          <Pressable style={styles.heroWrap} onPress={() => setPlaying(true)}>
             <Image source={{ uri: HERO }} style={styles.heroImg} />
             <LinearGradient
               colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.30)", "rgba(0,0,0,0.92)"]}
@@ -329,7 +352,10 @@ const styles = StyleSheet.create({
   challengeDesc: { color: "rgba(255,255,255,0.60)", fontSize: 12, fontWeight: "600", marginTop: 4 },
 
   /* ── Estilos del WebView / juego ── */
-  gameContainer: { flex: 1, backgroundColor: Stitch.colors.bg },
+  gameContainer: {
+    flex: 1,
+    backgroundColor: Stitch.colors.bg,
+  },
   gameBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -347,7 +373,9 @@ const styles = StyleSheet.create({
   },
   backText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   gameBarTitle: { color: "#fff", fontSize: 15, fontWeight: "900" },
-  reloadBtn: { padding: 6 },
+  reloadBtn: {
+    padding: 6,
+  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Stitch.colors.bg,
