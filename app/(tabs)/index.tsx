@@ -1,18 +1,21 @@
+import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   Image,
   Pressable,
+  ScrollView,
   StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 import Svg, { Circle } from "react-native-svg";
-import { LinearGradient } from "expo-linear-gradient";
+import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Stitch } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
+import { useRequireAuth } from "../../hooks/use-require-auth";
 
 const AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCzg_bncn8v8i9GmP4pe6cJr8gcIf1XFYkAwXD0iAhi3_kr0BYR3hZ3I99J5czhyYcol3ibNzhbj7fgJKhdlkbGSvniLzEtJ54AEh4_IySXgYCHhYH-MxDPM2jMxtCxnj6dIv66t47iJ3NaOKncVnzZto3AKckw4YwPIC8sirgUvrc6uczCc2RaP7rIDop6CE_lZ2VXmCmbS7TujBTSBjY8F_cASGCwD01dUgbgHx96IOs-udQ1Jjlwv7mxYVLGDrg2eo4ghjuwm68";
@@ -76,9 +79,15 @@ function ProgressRing({ percent }: { percent: number }) {
 }
 
 export default function HomeScreen() {
+  const { user, isAuthenticated } = useAuth();
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+
+  const displayName = isAuthenticated && user ? user.name : "Visitante";
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" />
+      <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -89,7 +98,7 @@ export default function HomeScreen() {
 
             <View style={{ flex: 1 }}>
               <View style={styles.helloRow}>
-                <Text style={styles.helloText}>Hola, Ivanna</Text>
+                <Text style={styles.helloText}>Hola, {displayName}</Text>
                 <View style={styles.streakPill}>
                   <MaterialIcons
                     name="local-fire-department"
@@ -116,14 +125,14 @@ export default function HomeScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.muted}>Meta diaria</Text>
               <Text style={styles.titleMd}>¡Casi llegas!</Text>
-              <Text style={styles.primarySmall}>Sigue así, Ivanna</Text>
+              <Text style={styles.primarySmall}>Sigue así, {displayName}</Text>
             </View>
           </GlassCard>
         </View>
 
         {/* Acción del día */}
         <View style={[styles.sectionPad, { marginTop: 10 }]}>
-          <Pressable style={styles.heroWrap}>
+          <Pressable style={styles.heroWrap} onPress={() => requireAuth(() => {})}>
             <Image source={{ uri: HERO }} style={styles.heroImg} />
             <LinearGradient
               colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.45)", "rgba(0,0,0,0.90)"]}
@@ -139,7 +148,7 @@ export default function HomeScreen() {
                   <Text style={styles.heroMetaText}>Hoy, 08:30 AM</Text>
                 </View>
 
-                <Pressable style={styles.heroBtn}>
+                <Pressable style={styles.heroBtn} onPress={() => requireAuth(() => {})}>
                   <Text style={styles.heroBtnText}>Comenzar</Text>
                   <MaterialIcons name="play-arrow" size={18} color={Stitch.colors.bg} />
                 </Pressable>
@@ -152,7 +161,7 @@ export default function HomeScreen() {
         <View style={{ marginTop: 18 }}>
           <View style={[styles.rowBetween, styles.sectionPad]}>
             <Text style={styles.sectionTitle}>Continuar</Text>
-            <Pressable>
+            <Pressable onPress={() => requireAuth(() => {})}>
               <Text style={styles.sectionLink}>Ver todo</Text>
             </Pressable>
           </View>
@@ -162,8 +171,12 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.hList}
           >
-            <ContinueCard image={CONTINUE_1} title="Meditación matutina" minutes="12 min" progress={0.66} />
-            <ContinueCard image={CONTINUE_2} title="Clase de reciclaje" minutes="8 min" progress={0.25} />
+            <Pressable onPress={() => requireAuth(() => {})}>
+              <ContinueCard image={CONTINUE_1} title="Meditación matutina" minutes="12 min" progress={0.66} />
+            </Pressable>
+            <Pressable onPress={() => requireAuth(() => {})}>
+              <ContinueCard image={CONTINUE_2} title="Clase de reciclaje" minutes="8 min" progress={0.25} />
+            </Pressable>
           </ScrollView>
         </View>
 
@@ -172,22 +185,26 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Recomendado para ti</Text>
 
           <View style={{ marginTop: 14, gap: 12 }}>
-            <RecommendedRow
-              image={REC_1}
-              tag="Ambiental"
-              tagColor={Stitch.colors.primary}
-              tagBg="rgba(33,196,93,0.20)"
-              title="Huerto urbano en casa"
-              desc="Aprende a cultivar tus vegetales"
-            />
-            <RecommendedRow
-              image={REC_2}
-              tag="Actividad física"
-              tagColor="#60A5FA"
-              tagBg="rgba(59,130,246,0.20)"
-              title="Estiramiento básico"
-              desc="Mejora tu flexibilidad diaria"
-            />
+            <Pressable onPress={() => requireAuth(() => {})}>
+              <RecommendedRow
+                image={REC_1}
+                tag="Ambiental"
+                tagColor={Stitch.colors.primary}
+                tagBg="rgba(33,196,93,0.20)"
+                title="Huerto urbano en casa"
+                desc="Aprende a cultivar tus vegetales"
+              />
+            </Pressable>
+            <Pressable onPress={() => requireAuth(() => {})}>
+              <RecommendedRow
+                image={REC_2}
+                tag="Actividad física"
+                tagColor="#60A5FA"
+                tagBg="rgba(59,130,246,0.20)"
+                title="Estiramiento básico"
+                desc="Mejora tu flexibilidad diaria"
+              />
+            </Pressable>
           </View>
         </View>
 

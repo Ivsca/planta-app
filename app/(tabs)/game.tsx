@@ -1,7 +1,7 @@
+import React, { useEffect, useRef, useState } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
-import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -15,11 +15,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+
+import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { useAuth } from "../../context/AuthContext";
 import { Stitch } from "../../constants/theme";
 
 /* ───────────────────────────────────────────────
-   URL DEL JUEGO  –  Cambia esta URL por el build
+   URL DEL JUEGO – Cambia esta URL por el build
    Unity WebGL cuando se pueda descargar y listo.
    ─────────────────────────────────────────────── */
 const GAME_URL = "https://plays.org/game/recycle-hero/?utm_source=chatgpt.com";
@@ -64,15 +67,13 @@ function GameWebView({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const webviewRef = useRef<any>(null);
+  const webviewRef = useRef<WebView>(null);
 
-  /* Timeout: si después de 20s sigue "cargando", quitamos el overlay */
+  // Timeout: si después de 20s sigue "cargando", quitamos el overlay
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) setLoading(false);
-    }, 20_000);
+    const timer = setTimeout(() => setLoading(false), 20_000);
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, []);
 
   const handleRetry = () => {
     setError(false);
@@ -81,7 +82,7 @@ function GameWebView({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <View style={[styles.gameContainer, { paddingTop: insets.top }]}>  
+    <View style={[styles.gameContainer, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" />
 
       {/* Barra superior */}
@@ -93,10 +94,7 @@ function GameWebView({ onClose }: { onClose: () => void }) {
 
         <Text style={styles.gameBarTitle}>Oracúlo-Juego</Text>
 
-        <Pressable
-          onPress={handleRetry}
-          style={styles.reloadBtn}
-        >
+        <Pressable onPress={handleRetry} style={styles.reloadBtn}>
           <MaterialIcons name="refresh" size={22} color="#fff" />
         </Pressable>
       </View>
@@ -132,13 +130,13 @@ function GameWebView({ onClose }: { onClose: () => void }) {
               setLoading(false);
               setError(true);
             }}
-            /* Permite touch & gestos dentro del juego */
             originWhitelist={["*"]}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
             javaScriptEnabled
             domStorageEnabled
             allowsFullscreenVideo
+            // scalesPageToFit está deprecated en algunos setups; si te da warning, bórralo.
             scalesPageToFit={Platform.OS === "android"}
             startInLoadingState={false}
             cacheEnabled
@@ -148,7 +146,6 @@ function GameWebView({ onClose }: { onClose: () => void }) {
                 ? "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
                 : undefined
             }
-            /* Viewport correcto para el juego */
             injectedJavaScript={`
               const meta = document.createElement('meta');
               meta.name = 'viewport';
@@ -168,15 +165,21 @@ function GameWebView({ onClose }: { onClose: () => void }) {
 
         {error && !loading && (
           <View style={styles.loadingOverlay}>
-            <MaterialIcons name="error-outline" size={48} color="rgba(255,255,255,0.4)" />
+            <MaterialIcons
+              name="error-outline"
+              size={48}
+              color="rgba(255,255,255,0.4)"
+            />
             <Text style={styles.errorTitle}>No se pudo cargar el juego</Text>
             <Text style={styles.errorSub}>
               El sitio podría estar bloqueando la carga dentro de la app.
             </Text>
+
             <Pressable style={styles.retryBtn} onPress={handleRetry}>
               <MaterialIcons name="refresh" size={18} color={Stitch.colors.bg} />
               <Text style={styles.retryText}>Reintentar</Text>
             </Pressable>
+
             <Pressable
               style={styles.openBrowserBtn}
               onPress={() => Linking.openURL(GAME_URL)}
@@ -195,6 +198,35 @@ function GameWebView({ onClose }: { onClose: () => void }) {
 export default function ChallengesScreen() {
   const [playing, setPlaying] = useState(false);
 
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | (() => void)>(null);
+
+  const dismissLogin = () => {
+    setLoginModalVisible(false);
+    setPendingAction(null);
+  };
+
+  const onLoginSuccess = () => {
+    setLoginModalVisible(false);
+    pendingAction?.();
+    setPendingAction(null);
+  };
+
+  const requireAuth = (action: () => void) => {
+    // Si todavía está cargando sesión (AsyncStorage/localStorage), no dispares modal.
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      setPendingAction(() => action);
+      setLoginModalVisible(true);
+      return;
+    }
+
+    action();
+  };
+
   /* Si el usuario toca "Jugar", mostramos el WebView a pantalla completa */
   if (playing) {
     return <GameWebView onClose={() => setPlaying(false)} />;
@@ -202,17 +234,35 @@ export default function ChallengesScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <LoginModal
+        visible={loginModalVisible}
+        onDismiss={dismissLogin}
+        onSuccess={onLoginSuccess}
+      />
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.h1}>Retos</Text>
         </View>
 
         {/* HERO: Jugar */}
         <View style={styles.pad}>
-          <Pressable style={styles.heroWrap} onPress={() => setPlaying(true)}>
+          <Pressable
+            style={[styles.heroWrap, isLoading && { opacity: 0.7 }]}
+            disabled={isLoading}
+            onPress={() => requireAuth(() => setPlaying(true))}
+          >
+
             <Image source={{ uri: HERO }} style={styles.heroImg} />
             <LinearGradient
-              colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.30)", "rgba(0,0,0,0.92)"]}
+              colors={[
+                "rgba(0,0,0,0)",
+                "rgba(0,0,0,0.30)",
+                "rgba(0,0,0,0.92)",
+              ]}
               style={StyleSheet.absoluteFill}
             />
 
@@ -229,7 +279,11 @@ export default function ChallengesScreen() {
               <View style={styles.heroBtnRow}>
                 <View style={styles.heroBtn}>
                   <Text style={styles.heroBtnText}>Jugar</Text>
-                  <MaterialIcons name="play-arrow" size={18} color={Stitch.colors.bg} />
+                  <MaterialIcons
+                    name="play-arrow"
+                    size={18}
+                    color={Stitch.colors.bg}
+                  />
                 </View>
 
                 <Text style={styles.heroHint}>Toca para iniciar el juego</Text>
@@ -244,21 +298,35 @@ export default function ChallengesScreen() {
 
           <View style={{ marginTop: 12, gap: 12 }}>
             {CHALLENGES.map((c) => (
-              <GlassCard key={c.id} style={styles.challengeCard}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.rowTop}>
-                    <Text style={styles.tag}>{c.tag.toUpperCase()}</Text>
-                    <View style={styles.statusPill}>
-                      <Text style={styles.statusText}>{c.status}</Text>
+              <Pressable
+                key={c.id}
+                onPress={() =>
+                  requireAuth(() => {
+                    // TODO: aquí navegas o abres detalle del reto
+                    // por ahora no hago nada para no alterar tu flujo
+                  })
+                }
+              >
+                <GlassCard style={styles.challengeCard}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.rowTop}>
+                      <Text style={styles.tag}>{c.tag.toUpperCase()}</Text>
+                      <View style={styles.statusPill}>
+                        <Text style={styles.statusText}>{c.status}</Text>
+                      </View>
                     </View>
+
+                    <Text style={styles.challengeTitle}>{c.title}</Text>
+                    <Text style={styles.challengeDesc}>{c.desc}</Text>
                   </View>
 
-                  <Text style={styles.challengeTitle}>{c.title}</Text>
-                  <Text style={styles.challengeDesc}>{c.desc}</Text>
-                </View>
-
-                <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.25)" />
-              </GlassCard>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={24}
+                    color="rgba(255,255,255,0.25)"
+                  />
+                </GlassCard>
+              </Pressable>
             ))}
           </View>
         </View>
