@@ -1,9 +1,11 @@
-import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Stitch } from "../../constants/theme";
+import React, { useMemo } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { Stitch } from "../../constants/theme";
+import { useRequireAuth } from "../../hooks/use-require-auth";
 
 type Medal = {
   id: string;
@@ -55,8 +57,11 @@ export default function AchievementsScreen() {
     []
   );
 
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+
   return (
     <View style={styles.screen}>
+      <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
       {/* Sticky header */}
       <View style={styles.header}>
       <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
@@ -64,7 +69,7 @@ export default function AchievementsScreen() {
 
       <Text style={styles.headerTitleLeft}>Logros</Text>
 
-      <Pressable style={styles.headerBtn} hitSlop={10} onPress={() => {}}>
+      <Pressable style={styles.headerBtn} hitSlop={10} onPress={() => requireAuth(() => {})}>
         <MaterialIcons name="share" size={20} color={Stitch.colors.primary} />
       </Pressable>
     </View>
@@ -129,7 +134,7 @@ export default function AchievementsScreen() {
         </View>
 
         {/* CTA */}
-        <Pressable style={styles.ctaBtn} onPress={() => {}}>
+        <Pressable style={styles.ctaBtn} onPress={() => requireAuth(() => {})}>
           <Text style={styles.ctaText}>Ver todos los retos</Text>
           <MaterialIcons name="trending-flat" size={20} color={Stitch.colors.primary} />
         </Pressable>

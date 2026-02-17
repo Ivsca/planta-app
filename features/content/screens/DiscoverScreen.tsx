@@ -1,23 +1,25 @@
+import { MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
   FlatList,
   Image,
-  ScrollView,
-  TextInput,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 
-import type { ContentCategory, ContentItem } from "../types";
+import { LoginModal } from "../../../components/auth/LoginModal";
+import { Stitch } from "../../../constants/theme";
+import { useRequireAuth } from "../../../hooks/use-require-auth";
 import { FEATURED, FEED } from "../data/content.mock";
 import { applyDiscoverFilters } from "../selectors";
-import { Stitch } from "../../../constants/theme";
+import type { ContentCategory, ContentItem } from "../types";
 
 type UiChip = "Todo" | "Ambiente" | "Ejercicio" | "Bienestar";
 
@@ -69,6 +71,7 @@ export default function DiscoverScreen() {
   const [saved, setSaved] = useState<Record<string, boolean>>({});
 
   const listRef = useRef<FlatList<ContentItem>>(null);
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
 
   const domainChip = UI_TO_DOMAIN_CHIP[uiChip];
 
@@ -78,11 +81,12 @@ export default function DiscoverScreen() {
   );
 
   const toggleSave = (id: string) => {
-    setSaved((prev) => ({ ...prev, [id]: !prev[id] }));
+    requireAuth(() => setSaved((prev) => ({ ...prev, [id]: !prev[id] })));
   };
 
   return (
     <View style={styles.screen}>
+      <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
       {/* Header sticky (simulado): lo ponemos fuera del FlatList para que quede fijo */}
       <View style={styles.stickyHeader}>
         {/* Blur de fondo */}
@@ -91,7 +95,7 @@ export default function DiscoverScreen() {
 
         <View style={styles.headerRow}>
           <Text style={styles.h1}>Descubrir</Text>
-          <Pressable style={styles.notifBtn} hitSlop={10}>
+          <Pressable style={styles.notifBtn} hitSlop={10} onPress={() => requireAuth(() => {})}>
             <MaterialIcons name="notifications" size={20} color={Stitch.colors.primary} />
           </Pressable>
         </View>
@@ -163,7 +167,7 @@ export default function DiscoverScreen() {
                 const badge = item?.badge ?? (idx === 0 ? "Destacado" : "Nuevo");
 
                 return (
-                  <Pressable key={item?.id ?? String(idx)} style={styles.featuredCard}>
+                  <Pressable key={item?.id ?? String(idx)} style={styles.featuredCard} onPress={() => requireAuth(() => {})}>
                     {uri ? <Image source={{ uri }} style={styles.featuredImg} /> : null}
 
                     <LinearGradient
@@ -190,7 +194,7 @@ export default function DiscoverScreen() {
             {/* Section header */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recomendado para ti</Text>
-              <Pressable>
+              <Pressable onPress={() => requireAuth(() => {})}>
                 <Text style={styles.sectionLink}>Ver todo</Text>
               </Pressable>
             </View>
@@ -208,7 +212,7 @@ export default function DiscoverScreen() {
           const isSaved = !!saved[item.id];
 
           return (
-            <Pressable style={styles.row}>
+            <Pressable style={styles.row} onPress={() => requireAuth(() => {})}>
               <View style={styles.thumbWrap}>
                 {uri ? <Image source={{ uri }} style={styles.thumb} /> : null}
                 {duration ? (
