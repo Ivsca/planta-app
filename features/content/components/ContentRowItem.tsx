@@ -1,19 +1,41 @@
 // features/content/components/ContentRowItem.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
-import { ContentItem } from "../types";
+import { router } from "expo-router";
+import type { ContentItem } from "../types";
 import { formatDuration, formatViews } from "../selectors";
 import { getCategoryColor } from "../categoryColors";
 
-export function ContentRowItem({ item, onPress }: { item: ContentItem; onPress?: () => void }) {
-  const duration = formatDuration(item.durationSec);
-  const views = formatViews(item.views);
+type Props = {
+  item: ContentItem;
+  onPress?: () => void; // opcional: override (por ejemplo abrir modal)
+};
+
+export function ContentRowItem({ item, onPress }: Props) {
+  const duration = useMemo(() => formatDuration(item.durationSec), [item.durationSec]);
+  const views = useMemo(() => formatViews(item.views), [item.views]);
   const { base } = getCategoryColor(item.category);
 
+  const handlePress = () => {
+    if (onPress) return onPress();
+    router.push(`/content/${item.id}`);
+  };
+
   return (
-    <Pressable onPress={onPress} style={styles.row}>
+    <Pressable
+      onPress={handlePress}
+      style={styles.row}
+      accessibilityRole="button"
+      android_ripple={{ color: "rgba(255,255,255,0.06)" }}
+    >
       <View style={styles.thumb}>
-        {!!item.thumbnail && <Image source={{ uri: item.thumbnail }} style={{ width: "100%", height: "100%" }} />}
+        {!!item.thumbnail && (
+          <Image
+            source={{ uri: item.thumbnail }}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="cover"
+          />
+        )}
         {!!duration && <Text style={styles.duration}>{duration}</Text>}
       </View>
 

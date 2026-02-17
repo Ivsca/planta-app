@@ -1,11 +1,22 @@
+// app/(tabs)/_layout.tsx
 import React from "react";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stitch } from "../../constants/theme";
 
 const INACTIVE = "rgba(255,255,255,0.40)";
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
+  const BASE_HEIGHT = 72; // tu diseño actual
+  const PAD_TOP = 10;
+  const PAD_BOTTOM_DESIGN = 12;
+
+  // ✅ evita que quede pegado incluso si insets.bottom=0 (algunos dispositivos/estados)
+  const safeBottom = Math.max(insets.bottom, PAD_BOTTOM_DESIGN);
+
   return (
     <Tabs
       screenOptions={{
@@ -18,9 +29,11 @@ export default function TabsLayout() {
           backgroundColor: "rgba(5,5,5,0.85)",
           borderTopColor: "rgba(255,255,255,0.05)",
           borderTopWidth: 1,
-          height: 72,
-          paddingTop: 10,
-          paddingBottom: 12,
+
+          // ✅ claves:
+          paddingTop: PAD_TOP,
+          paddingBottom: safeBottom,
+          height: BASE_HEIGHT + (safeBottom - PAD_BOTTOM_DESIGN),
         },
       }}
     >
