@@ -1,7 +1,9 @@
 import React from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
+
 import ArticleSlideShell from "../ArticleSlideShell";
 import type { HookSlide as HookSlideType } from "../types";
+import type { CategoryTheme } from "../categoryTheme"; 
 
 type Props = {
   data: HookSlideType;
@@ -9,12 +11,11 @@ type Props = {
   total: number;
   onBack: () => void;
   onNext: () => void;
-  categoryLabel?: string;
+  categoryLabel: string; 
+  theme: CategoryTheme;  
 };
 
-const PRIMARY = "#13EC5B";
 const TEXT_DIM = "rgba(255,255,255,0.60)";
-const BORDER = "rgba(19,236,91,0.10)";
 
 export default function HookSlide({
   data,
@@ -22,19 +23,25 @@ export default function HookSlide({
   total,
   onBack,
   onNext,
-  categoryLabel = "Medio Ambiente",
+  categoryLabel,
+  theme,
 }: Props) {
   const progressText = `${slideIndex + 1} / ${total}`;
 
-  // ✅ Prioriza imagen local si existe, si no usa URL remota
+  
   const heroSource =
     data.heroImage ? data.heroImage : data.heroUri ? { uri: data.heroUri } : null;
 
   return (
-    <ArticleSlideShell progressText={progressText} onBack={onBack} onNext={onNext}>
+    <ArticleSlideShell
+      theme={theme} 
+      progressText={progressText}
+      onBack={onBack}
+      onNext={onNext}
+    >
       {/* Category badge */}
       <View style={styles.badgeRow}>
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: theme.base }]}>
           <Text style={styles.badgeText}>{categoryLabel.toUpperCase()}</Text>
         </View>
       </View>
@@ -46,8 +53,12 @@ export default function HookSlide({
       </View>
 
       {/* Hero */}
-      <View style={styles.heroWrap}>
-        <View style={styles.glow} pointerEvents="none" />
+      <View style={[styles.heroWrap, { borderColor: theme.border }]}>
+        {/* Glow */}
+        <View
+          style={[styles.glow, { backgroundColor: theme.base }]}
+          pointerEvents="none"
+        />
 
         {heroSource ? (
           <Image
@@ -71,7 +82,6 @@ const styles = StyleSheet.create({
   badgeRow: { marginTop: 12, marginBottom: 22 },
   badge: {
     alignSelf: "flex-start",
-    backgroundColor: PRIMARY,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
@@ -107,7 +117,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: BORDER,
     backgroundColor: "rgba(18,18,24,0.20)",
     overflow: "hidden",
   },
@@ -118,15 +127,14 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     transform: [{ scale: 1.15 }],
+    opacity: 0.18, 
   },
 
-  // ✅ En vez de 250x250 fijo (que no respeta el contenedor), hazla “cover” real del wrap
   heroImage: {
     width: "100%",
     height: "100%",
   },
 
-  // ✅ Esto faltaba en tu archivo
   heroPlaceholder: {
     width: "100%",
     height: "100%",

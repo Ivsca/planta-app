@@ -1,21 +1,25 @@
-import React from "react";
-import { Slide } from "./types";
+import React, { useMemo } from "react";
 
-import HookSlide from "./slides/HookSlide";
+import { getCategoryTheme } from "./categoryTheme";
+import type { CategoryTheme } from "./categoryTheme";
+
+import type { ContentCategory } from "../content/types";
+import { CATEGORY_LABEL } from "../content/category"; // ✅ fuente única de labels
+
+import ActionSlide from "./slides/ActionSlide";
 import ConceptSlide from "./slides/ConceptSlide";
 import ExampleSlide from "./slides/ExampleSlide";
-import ActionSlide from "./slides/ActionSlide";
+import HookSlide from "./slides/HookSlide";
 import QuizSlide from "./slides/QuizSlide";
-
-type Category = "environment" | "fitness";
+import type { Slide } from "./types";
 
 interface Props {
   slide: Slide;
-  slideIndex: number; // índice real de esta slide
+  slideIndex: number;
   total: number;
   onBack: () => void;
   onNext: () => void;
-  category: Category;
+  category: ContentCategory; // "environment" | "fitness" | ...
 }
 
 export default function SlideRenderer({
@@ -26,8 +30,10 @@ export default function SlideRenderer({
   onNext,
   category,
 }: Props) {
-  const categoryLabel =
-    category === "environment" ? "Medio Ambiente" : "Actividad Física";
+  const theme: CategoryTheme = useMemo(() => getCategoryTheme(category), [category]);
+
+  // ✅ Convierte id -> label humano
+  const categoryLabel = CATEGORY_LABEL[category] ?? "Rutina";
 
   switch (slide.type) {
     case "hook":
@@ -39,6 +45,7 @@ export default function SlideRenderer({
           onBack={onBack}
           onNext={onNext}
           categoryLabel={categoryLabel}
+          theme={theme}
         />
       );
 
@@ -50,6 +57,7 @@ export default function SlideRenderer({
           total={total}
           onBack={onBack}
           onNext={onNext}
+          theme={theme}
         />
       );
 
@@ -61,6 +69,7 @@ export default function SlideRenderer({
           total={total}
           onBack={onBack}
           onNext={onNext}
+          theme={theme}
         />
       );
 
@@ -72,6 +81,7 @@ export default function SlideRenderer({
           total={total}
           onBack={onBack}
           onNext={onNext}
+          theme={theme}
         />
       );
 
@@ -83,6 +93,7 @@ export default function SlideRenderer({
           total={total}
           onBack={onBack}
           onNext={onNext}
+          theme={theme}
         />
       );
 

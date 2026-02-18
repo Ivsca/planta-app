@@ -3,6 +3,7 @@ import React from "react";
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import type { CategoryTheme } from "./categoryTheme"; // ajusta la ruta real
 
 type Props = {
   progressText: string;
@@ -10,10 +11,12 @@ type Props = {
   onNext: () => void;
   nextLabel?: string;
   children: React.ReactNode;
+
+  
+  theme: CategoryTheme;
 };
 
 const BG = "#0B0B0F";
-const PRIMARY = "#13EC5B";
 
 export default function ArticleSlideShell({
   progressText,
@@ -21,19 +24,18 @@ export default function ArticleSlideShell({
   onNext,
   nextLabel = "Siguiente",
   children,
+  theme,
 }: Props) {
   const insets = useSafeAreaInsets();
 
-  // Mantén tu estética base, pero respeta navegación por 3 botones / safe area real.
   const footerBottom = Math.max(insets.bottom, 18);
 
-  // Reserva realista para que el contenido no quede debajo del CTA.
-  // (CTA ~52-60px + gradiente + márgenes)
   const CTA_ESTIMATED_HEIGHT = 56;
   const FOOTER_TOP_PADDING = 24;
   const EXTRA_GAP = 18;
 
-  const scrollBottomPadding = footerBottom + FOOTER_TOP_PADDING + CTA_ESTIMATED_HEIGHT + EXTRA_GAP;
+  const scrollBottomPadding =
+    footerBottom + FOOTER_TOP_PADDING + CTA_ESTIMATED_HEIGHT + EXTRA_GAP;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -45,7 +47,9 @@ export default function ArticleSlideShell({
           </Pressable>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.progress}>{progressText}</Text>
+            <Text style={[styles.progress, { color: theme.base, opacity: 0.65 }]}>
+              {progressText}
+            </Text>
           </View>
 
           <View style={styles.headerSpacer} />
@@ -54,7 +58,10 @@ export default function ArticleSlideShell({
         {/* Content */}
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: scrollBottomPadding },
+          ]}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         >
@@ -75,7 +82,14 @@ export default function ArticleSlideShell({
             onPress={onNext}
             accessibilityRole="button"
             accessibilityLabel={nextLabel}
-            style={({ pressed }) => [styles.ctaBtn, pressed && styles.ctaPressed]}
+            style={({ pressed }) => [
+              styles.ctaBtn,
+              {
+                backgroundColor: theme.base,
+                shadowColor: theme.base,
+              },
+              pressed && styles.ctaPressed,
+            ]}
           >
             <Text style={styles.ctaText}>{nextLabel}</Text>
             <Text style={styles.ctaArrow}>→</Text>
@@ -93,9 +107,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
     paddingHorizontal: 18,
-
-    // Nota: esto es solo para no “apretar” el header en Android.
-    // SafeAreaView ya maneja el inset superior.
     paddingTop: Platform.OS === "android" ? 8 : 0,
   },
 
@@ -116,7 +127,6 @@ const styles = StyleSheet.create({
 
   headerCenter: { flex: 1, alignItems: "center" },
   progress: {
-    color: "rgba(19,236,91,0.65)",
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 3,
@@ -126,7 +136,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     paddingTop: 10,
-    // paddingBottom ahora es dinámico para no tapar contenido con el CTA fijo
   },
 
   footerGrad: {
@@ -134,21 +143,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-
     paddingHorizontal: 18,
     paddingTop: 24,
-    // paddingBottom dinámico con insets
   },
 
   ctaBtn: {
-    backgroundColor: PRIMARY,
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
-    shadowColor: PRIMARY,
     shadowOpacity: 0.18,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },

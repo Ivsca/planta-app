@@ -4,18 +4,22 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import ArticleSlideShell from "../ArticleSlideShell";
 import type { QuizSlide as QuizSlideType } from "../types";
+import type { CategoryTheme } from "../categoryTheme"; 
 
 type Props = {
   data: QuizSlideType;
   slideIndex: number;
   total: number;
   onBack: () => void;
-  onNext: () => void; // fin del artículo
+  onNext: () => void;
+  theme: CategoryTheme;
 };
 
-const PRIMARY = "#13EC5B";
 const TEXT_DIM = "rgba(255,255,255,0.60)";
 const BORDER = "rgba(255,255,255,0.10)";
+const WRONG_BORDER = "rgba(255,80,80,0.55)";
+const WRONG_BG = "rgba(255,80,80,0.06)";
+const WRONG_BORDER_STRONG = "rgba(255,80,80,0.85)";
 
 export default function QuizSlide({
   data,
@@ -23,6 +27,7 @@ export default function QuizSlide({
   total,
   onBack,
   onNext,
+  theme,
 }: Props) {
   const progressText = `${slideIndex + 1} / ${total}`;
 
@@ -63,7 +68,6 @@ export default function QuizSlide({
   const handleNext = () => {
     if (!q) return onNext();
 
-    // 1) Si no ha enviado aún: enviar (mostrar feedback)
     if (!submitted) {
       if (!canSubmit) return;
       setSubmitted(true);
@@ -71,21 +75,19 @@ export default function QuizSlide({
       return;
     }
 
-    // 2) Si ya envió y no es la última pregunta: avanzar
     if (!isLastQuestion) {
       setQIndex((i) => i + 1);
       resetForNextQuestion();
       return;
     }
 
-    // 3) Última pregunta + ya enviado => fin del artículo
     onNext();
   };
 
-  // Caso borde: no hay preguntas
   if (!q || qTotal === 0) {
     return (
       <ArticleSlideShell
+      theme={theme}
         progressText={progressText}
         onBack={onBack}
         onNext={onNext}
@@ -100,23 +102,28 @@ export default function QuizSlide({
 
   return (
     <ArticleSlideShell
+      theme={theme}
       progressText={progressText}
       onBack={onBack}
       onNext={handleNext}
       nextLabel={nextLabel}
     >
-      {/* Mini header interno del quiz */}
+      {/* Header */}
       <View style={styles.quizTop}>
-        <Text style={styles.quizKicker}>PREGUNTA</Text>
+        <Text style={[styles.quizKicker, { color: theme.base }]}>PREGUNTA</Text>
+
         <Text style={styles.quizCounter}>
           {qIndex + 1} / {qTotal}
         </Text>
 
-        <View style={styles.progressBar}>
+        <View style={[styles.progressBar, { backgroundColor: theme.soft }]}>
           <View
             style={[
               styles.progressFill,
-              { width: `${Math.round(((qIndex + 1) / qTotal) * 100)}%` },
+              {
+                width: `${Math.round(((qIndex + 1) / qTotal) * 100)}%`,
+                backgroundColor: theme.base,
+              },
             ]}
           />
         </View>
@@ -131,8 +138,7 @@ export default function QuizSlide({
         {q.options.map((opt, i) => {
           const isSelected = selected === i;
           const isCorrectOption = submitted && i === q.correctIndex;
-          const isWrongSelected =
-            submitted && isSelected && i !== q.correctIndex;
+          const isWrongSelected = submitted && isSelected && i !== q.correctIndex;
 
           return (
             <Pressable
@@ -140,16 +146,16 @@ export default function QuizSlide({
               onPress={() => handlePick(i)}
               style={[
                 styles.optionCard,
-                isSelected && styles.optionSelected,
-                isCorrectOption && styles.optionCorrect,
-                isWrongSelected && styles.optionWrong,
+                isSelected && { borderColor: theme.border, backgroundColor: theme.soft },
+                isCorrectOption && { borderColor: theme.base, backgroundColor: theme.soft },
+                isWrongSelected && { borderColor: WRONG_BORDER, backgroundColor: WRONG_BG },
               ]}
             >
               <View style={{ flex: 1 }}>
                 <Text
                   style={[
                     styles.optionTitle,
-                    isCorrectOption && styles.optionTitleCorrect,
+                    isCorrectOption && { color: theme.base },
                   ]}
                 >
                   {opt.title}
@@ -164,12 +170,14 @@ export default function QuizSlide({
                 <View
                   style={[
                     styles.radioOuter,
-                    isSelected && styles.radioOuterSelected,
-                    isCorrectOption && styles.radioOuterCorrect,
-                    isWrongSelected && styles.radioOuterWrong,
+                    isSelected && { borderColor: theme.base },
+                    isCorrectOption && { borderColor: theme.base },
+                    isWrongSelected && { borderColor: WRONG_BORDER_STRONG },
                   ]}
                 >
-                  {isSelected ? <View style={styles.radioDot} /> : null}
+                  {isSelected ? (
+                    <View style={[styles.radioDot, { backgroundColor: theme.base }]} />
+                  ) : null}
                 </View>
               </View>
             </Pressable>
@@ -179,14 +187,22 @@ export default function QuizSlide({
 
       {/* Feedback */}
       {submitted && selected !== null ? (
-        <View style={styles.feedback}>
+        <View
+          style={[
+            styles.feedback,
+            {
+              backgroundColor: theme.soft,
+              borderColor: theme.border,
+            },
+          ]}
+        >
           <MaterialIcons
             name={isCorrect ? "info-outline" : "error-outline"}
             size={20}
-            color={PRIMARY}
+            color={theme.base}
           />
           <Text style={styles.feedbackText}>
-            <Text style={styles.feedbackStrong}>
+            <Text style={[styles.feedbackStrong, { color: theme.base }]}>
               {isCorrect ? "¡Correcto! " : "Incorrecto. "}
             </Text>
             {q.explanation}
@@ -199,18 +215,16 @@ export default function QuizSlide({
             size={20}
             color="rgba(255,255,255,0.45)"
           />
-          <Text style={styles.helperText}>
-            Elige una opción para continuar.
-          </Text>
+          <Text style={styles.helperText}>Elige una opción para continuar.</Text>
         </View>
       )}
 
-      {/* Score visible solo al final (cuando ya respondió la última) */}
+      {/* Score solo al final */}
       {submitted && isLastQuestion ? (
         <View style={styles.scoreBox}>
           <Text style={styles.scoreText}>
             Resultado:{" "}
-            <Text style={{ color: PRIMARY, fontWeight: "900" }}>
+            <Text style={{ color: theme.base, fontWeight: "900" }}>
               {score} / {qTotal}
             </Text>
           </Text>
@@ -224,7 +238,6 @@ const styles = StyleSheet.create({
   quizTop: { marginTop: 8, marginBottom: 10 },
 
   quizKicker: {
-    color: PRIMARY,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 2,
@@ -240,12 +253,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     height: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(19,236,91,0.20)",
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    backgroundColor: PRIMARY,
     borderRadius: 999,
   },
 
@@ -274,18 +285,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.10)",
     backgroundColor: "rgba(18,18,24,0.30)",
   },
-  optionSelected: {
-    borderColor: "rgba(19,236,91,0.40)",
-    backgroundColor: "rgba(19,236,91,0.06)",
-  },
-  optionCorrect: {
-    borderColor: PRIMARY,
-    backgroundColor: "rgba(19,236,91,0.10)",
-  },
-  optionWrong: {
-    borderColor: "rgba(255,80,80,0.55)",
-    backgroundColor: "rgba(255,80,80,0.06)",
-  },
 
   optionTitle: {
     color: "rgba(255,255,255,0.92)",
@@ -293,7 +292,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 20,
   },
-  optionTitleCorrect: { color: PRIMARY },
   optionDetail: {
     marginTop: 6,
     color: "rgba(255,255,255,0.55)",
@@ -311,23 +309,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  radioOuterSelected: { borderColor: PRIMARY },
-  radioOuterCorrect: { borderColor: PRIMARY },
-  radioOuterWrong: { borderColor: "rgba(255,80,80,0.85)" },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: PRIMARY,
   },
 
   feedback: {
     marginTop: 16,
     padding: 12,
     borderRadius: 14,
-    backgroundColor: "rgba(19,236,91,0.10)",
     borderWidth: 1,
-    borderColor: "rgba(19,236,91,0.22)",
     flexDirection: "row",
     gap: 10,
     alignItems: "flex-start",
@@ -338,7 +330,7 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 18,
   },
-  feedbackStrong: { color: PRIMARY, fontWeight: "900" },
+  feedbackStrong: { fontWeight: "900" },
 
   helperBox: {
     marginTop: 16,
