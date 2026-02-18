@@ -26,7 +26,7 @@ export const ARTICLE_2: Article = {
           body: "La huella ecológica es un indicador clave que mide el impacto de nuestras actividades diarias sobre el planeta. Desarrollado en 1996 por Mathis Wackernagel y William Rees, este concepto calcula la superficie ecológicamente productiva —expresada en hectáreas globales— necesaria para producir los recursos que consumimos y para absorber los residuos que generamos. Responde a una pregunta fundamental: ¿cuánta tierra y agua se requiere para mantener nuestro estilo de vida actual? Es una herramienta que nos permite visualizar, de manera tangible, la presión que ejercemos sobre los ecosistemas del planeta.",
         },
         {
-          icon: "eco",
+          icon: "recycling",
           title: "El Desequilibrio entre Demanda y Capacidad",
           body: "Cuando la huella ecológica de la humanidad supera la biocapacidad del planeta —su capacidad natural para regenerar recursos y absorber desechos— entramos en una situación de 'déficit ecológico'. Esto significa que estamos consumiendo los recursos naturales más rápido de lo que la Tierra puede reponerlos, viviendo literalmente 'a crédito' y comprometiendo el bienestar de las futuras generaciones. La realidad actual es preocupante: a nivel global, la demanda de recursos supera ampliamente la oferta del planeta. Según datos recientes, si todos los habitantes del mundo viviéramos como un europeo medio, necesitaríamos casi tres planetas para satisfacer nuestras necesidades de manera sostenible.",
         },

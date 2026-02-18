@@ -1,10 +1,17 @@
-import React from "react";
-import { View, Text, FlatList, Image, Pressable, StyleSheet, Dimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ContentItem } from "../types";
+import React from "react";
+import {
+  Dimensions,
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { getCategoryColor } from "../../articles/categoryTheme";
 import { formatDuration } from "../selectors";
-import { getCategoryColor } from "../categoryColors";
-
+import { ContentItem } from "../types";
 
 type Props = {
   title: string;
@@ -41,9 +48,14 @@ function FeaturedCard({ item }: { item: ContentItem }) {
   const { base } = getCategoryColor(item.category);
 
   return (
-    <Pressable style={[styles.card, { width: w }]} android_ripple={{ color: "rgba(255,255,255,0.08)" }}>
+    <Pressable
+      style={[styles.card, { width: w }]}
+      android_ripple={{ color: "rgba(255,255,255,0.08)" }}
+    >
       <View style={styles.imageWrap}>
-        {!!item.thumbnail && <Image source={{ uri: item.thumbnail }} style={styles.image} />}
+        {!!item.thumbnail && (
+          <Image source={{ uri: item.thumbnail }} style={styles.image} />
+        )}
         <View style={styles.scrim} />
         {!!duration && <Text style={styles.badge}>{duration}</Text>}
         <Pressable style={styles.bookmark} hitSlop={10}>
@@ -60,7 +72,6 @@ function FeaturedCard({ item }: { item: ContentItem }) {
   );
 }
 
-
 const TOKENS = {
   primary: "#e619e5",
   surface: "#161616",
@@ -68,14 +79,33 @@ const TOKENS = {
 };
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   h2: { color: "white", fontSize: 18, fontWeight: "800" },
-  link: { color: TOKENS.primary, fontSize: 12, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase" },
+  link: {
+    color: TOKENS.primary,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
 
-  card: { backgroundColor: TOKENS.surface, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: TOKENS.border },
+  card: {
+    backgroundColor: TOKENS.surface,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: TOKENS.border,
+  },
   imageWrap: { aspectRatio: 4 / 5, position: "relative" },
   image: { width: "100%", height: "100%" },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
   badge: {
     position: "absolute",
     top: 12,
@@ -100,6 +130,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bottomText: { position: "absolute", left: 12, right: 12, bottom: 12, gap: 4 },
-  kicker: { color: TOKENS.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
+  kicker: {
+    color: TOKENS.primary,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
   title: { color: "white", fontSize: 16, fontWeight: "800", lineHeight: 20 },
 });

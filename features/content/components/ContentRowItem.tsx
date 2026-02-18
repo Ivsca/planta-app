@@ -1,10 +1,10 @@
 // features/content/components/ContentRowItem.tsx
-import React, { useMemo } from "react";
-import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import type { ContentItem } from "../types";
+import React, { useMemo } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { getCategoryColor } from "../../articles/categoryTheme";
 import { formatDuration, formatViews } from "../selectors";
-import { getCategoryColor } from "../categoryColors";
+import type { ContentItem } from "../types";
 
 type Props = {
   item: ContentItem;
@@ -12,7 +12,10 @@ type Props = {
 };
 
 export function ContentRowItem({ item, onPress }: Props) {
-  const duration = useMemo(() => formatDuration(item.durationSec), [item.durationSec]);
+  const duration = useMemo(
+    () => formatDuration(item.durationSec),
+    [item.durationSec],
+  );
   const views = useMemo(() => formatViews(item.views), [item.views]);
   const { base } = getCategoryColor(item.category);
 
@@ -49,7 +52,9 @@ export function ContentRowItem({ item, onPress }: Props) {
         <View style={styles.miniRow}>
           {!!views && <Text style={styles.miniText}>{views} vistas</Text>}
           <View style={styles.dot} />
-          <Text style={styles.miniText}>{item.isNew ? "Nuevo" : "Reciente"}</Text>
+          <Text style={styles.miniText}>
+            {item.isNew ? "Nuevo" : "Reciente"}
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -86,9 +91,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   meta: { flex: 1, gap: 4 },
-  kicker: { fontSize: 10, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase" },
-  title: { color: "rgba(255,255,255,0.92)", fontSize: 13, fontWeight: "800", lineHeight: 18 },
+  kicker: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  title: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 18,
+  },
   miniRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  miniText: { color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: "700" },
-  dot: { width: 4, height: 4, borderRadius: 99, backgroundColor: "rgba(255,255,255,0.18)" },
+  miniText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 99,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
 });

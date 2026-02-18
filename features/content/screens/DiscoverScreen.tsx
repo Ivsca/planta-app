@@ -3,6 +3,9 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { getCategoryTheme } from "../../../features/articles/categoryTheme";
+import { CATEGORY_LABEL, type CategoryId } from "../category";
+
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
@@ -68,7 +71,6 @@ function typeToDomain(t: UiTypeChip): ContentItem["type"] | "all" {
   }
 }
 
-// ✅ helper: soporta thumbnail local(require) o remoto(string url)
 function toImageSource(
   thumb: ContentItem["thumbnail"],
 ): ImageSourcePropType | undefined {
@@ -86,15 +88,24 @@ export default function DiscoverScreen() {
   const [saved, setSaved] = useState<Record<string, boolean>>({});
 
   const listRef = useRef<FlatList<ContentItem>>(null);
+
+  // ✅ búsqueda real (evita espacios)
+  const normalizedQuery = query.trim();
+  const isSearching = normalizedQuery.length > 0;
+
   const typeFilter = typeToDomain(uiType);
 
   const filtered = useMemo(() => {
     // ✅ ya NO filtramos por categoría: chip siempre "Todo"
-    const base = applyDiscoverFilters({ items: FEED, query, chip: "Todo" });
+    const base = applyDiscoverFilters({
+      items: FEED,
+      query: normalizedQuery,
+      chip: "Todo",
+    });
 
     if (typeFilter === "all") return base;
     return base.filter((x) => x.type === typeFilter);
-  }, [query, typeFilter]);
+  }, [normalizedQuery, typeFilter]);
 
   const toggleSave = useCallback((id: string) => {
     setSaved((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -126,12 +137,18 @@ export default function DiscoverScreen() {
       const uiTypeLabel = typeLabel(item.type);
       const isSaved = !!saved[item.id];
 
-      // ✅ sin UiChip: usa la categoría real del dominio
-      const kickerText = item.category
-        ? `${item.category} • ${uiTypeLabel}`
-        : uiTypeLabel;
-
       const thumbSource = toImageSource(item.thumbnail);
+
+      const CATEGORY_IDS: CategoryId[] = [
+        "environment",
+        "fitness",
+        "routine",
+        "challenges",
+      ];
+
+      function isCategoryId(v: unknown): v is CategoryId {
+        return typeof v === "string" && (CATEGORY_IDS as string[]).includes(v);
+      }
 
       return (
         <View style={styles.rowContainer}>
@@ -148,7 +165,25 @@ export default function DiscoverScreen() {
             </View>
 
             <View style={styles.rowBody}>
-              <Text style={styles.kicker}>{kickerText}</Text>
+              <View style={styles.kickerRow}>
+                {isCategoryId(item.category) ? (
+                  <Text
+                    style={[
+                      styles.kickerCategory,
+                      { color: getCategoryTheme(item.category).base },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {CATEGORY_LABEL[item.category].toUpperCase()}
+                  </Text>
+                ) : null}
+
+                <Text style={styles.kickerDot}> • </Text>
+
+                <Text style={styles.kickerType} numberOfLines={1}>
+                  {uiTypeLabel.toUpperCase()}
+                </Text>
+              </View>
 
               <Text style={styles.rowTitle} numberOfLines={1}>
                 {item.title}
@@ -228,39 +263,40 @@ export default function DiscoverScreen() {
             autoCorrect={false}
           />
         </View>
+
+        <ScrollView
+          horizontal
+          style={styles.typeChipsScroll}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+        >
+          {TYPE_CHIPS.map((t) => {
+            const active = t === uiType;
+            return (
+              <Pressable
+                key={t}
+                onPress={() => onTypeChipPress(t)}
+                style={[
+                  styles.chip,
+                  active ? styles.chipActive : styles.chipInactive,
+                ]}
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    active ? styles.chipTextActive : styles.chipTextInactive,
+                  ]}
+                >
+                  {t}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* ✅ Solo chips por tipo */}
-      <ScrollView
-        horizontal
-        style={styles.typeChipsScroll}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
-      >
-        {TYPE_CHIPS.map((t) => {
-          const active = t === uiType;
-          return (
-            <Pressable
-              key={t}
-              onPress={() => onTypeChipPress(t)}
-              style={[
-                styles.chip,
-                active ? styles.chipActive : styles.chipInactive,
-              ]}
-              accessibilityRole="button"
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  active ? styles.chipTextActive : styles.chipTextInactive,
-                ]}
-              >
-                {t}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
 
       <FlatList<ContentItem>
         ref={listRef}
@@ -270,67 +306,81 @@ export default function DiscoverScreen() {
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
         renderItem={renderRow}
+        // ✅ header SOLO cuando NO estás buscando
         ListHeaderComponent={
-          <View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToAlignment="center"
-              decelerationRate="fast"
-              contentContainerStyle={styles.featuredRow}
-            >
-              {FEATURED.map((item, idx) => {
-                const badge = badgeForFeatured(item, idx);
-                const featuredSource = toImageSource(item.thumbnail);
+          isSearching ? null : (
+            <View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToAlignment="center"
+                decelerationRate="fast"
+                contentContainerStyle={styles.featuredRow}
+              >
+                {FEATURED.map((item, idx) => {
+                  const badge = badgeForFeatured(item, idx);
+                  const featuredSource = toImageSource(item.thumbnail);
 
-                return (
-                  <Pressable
-                    key={item.id}
-                    style={styles.featuredCard}
-                    onPress={() => openDetail(item.id)}
-                    accessibilityRole="button"
-                    android_ripple={{ color: "rgba(255,255,255,0.06)" }}
-                  >
-                    {!!featuredSource && (
-                      <Image
-                        source={featuredSource}
-                        style={styles.featuredImg}
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={styles.featuredCard}
+                      onPress={() => openDetail(item.id)}
+                      accessibilityRole="button"
+                      android_ripple={{ color: "rgba(255,255,255,0.06)" }}
+                    >
+                      {!!featuredSource && (
+                        <Image
+                          source={featuredSource}
+                          style={styles.featuredImg}
+                        />
+                      )}
+
+                      <LinearGradient
+                        colors={[
+                          "rgba(0,0,0,0)",
+                          "rgba(0,0,0,0.25)",
+                          "rgba(0,0,0,0.80)",
+                        ]}
+                        style={StyleSheet.absoluteFill}
                       />
-                    )}
 
-                    <LinearGradient
-                      colors={[
-                        "rgba(0,0,0,0)",
-                        "rgba(0,0,0,0.25)",
-                        "rgba(0,0,0,0.80)",
-                      ]}
-                      style={StyleSheet.absoluteFill}
-                    />
+                      <View style={styles.featuredContent}>
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>{badge}</Text>
+                        </View>
 
-                    <View style={styles.featuredContent}>
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{badge}</Text>
+                        <Text style={styles.featuredTitle} numberOfLines={2}>
+                          {item.title}
+                        </Text>
+
+                        <Text style={styles.featuredMeta} numberOfLines={1}>
+                          {item.category} • {typeLabel(item.type)} •{" "}
+                          {formatViews(item.views)} vistas
+                        </Text>
                       </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
-                      <Text style={styles.featuredTitle} numberOfLines={2}>
-                        {item.title}
-                      </Text>
-
-                      <Text style={styles.featuredMeta} numberOfLines={1}>
-                        {item.category} • {typeLabel(item.type)} •{" "}
-                        {formatViews(item.views)} vistas
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recomendado para ti</Text>
-              <Text style={styles.sectionLink}>Ver todo</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recomendado para ti</Text>
+                <Text style={styles.sectionLink}>Ver todo</Text>
+              </View>
             </View>
-          </View>
+          )
+        }
+        // ✅ “No encontrado” SOLO cuando hay búsqueda
+        ListEmptyComponent={
+          isSearching ? (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>No encontrado</Text>
+              <Text style={styles.emptySub}>
+                No hay resultados para “{normalizedQuery}”.
+              </Text>
+            </View>
+          ) : null
         }
         ListFooterComponent={<View style={{ height: 24 }} />}
       />
@@ -338,13 +388,13 @@ export default function DiscoverScreen() {
   );
 }
 
-// ✅ estilos: mismos tuyos, solo quité "chipsScroll" porque ya no existe en UI
+// ✅ estilos: mismos tuyos + estilos de empty state
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Stitch.colors.bg },
   stickyHeader: {
     paddingTop: 18,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: Stitch.colors.divider,
     overflow: "hidden",
@@ -383,8 +433,8 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: "#fff", fontSize: 14, fontWeight: "600" },
 
   chipsRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 10,
+    paddingBottom: 6,
     gap: 10,
     alignItems: "center",
   },
@@ -512,5 +562,46 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.55)",
     fontSize: 12,
     fontWeight: "700",
+  },
+
+  // ✅ empty state (solo en búsqueda)
+  emptyWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 26,
+  },
+  emptyTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  emptySub: {
+    marginTop: 6,
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+
+  kickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  kickerCategory: {
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+  },
+  kickerDot: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  kickerType: {
+    color: "rgba(255,255,255,0.75)", // o Stitch.colors.primary si quieres
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
   },
 });

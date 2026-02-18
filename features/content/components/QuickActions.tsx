@@ -1,9 +1,9 @@
 // features/content/components/QuickActions.tsx
-import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { getCategoryColor } from "../../articles/categoryTheme";
 import type { ContentCategory } from "../types";
-import { getCategoryColor } from "../categoryColors";
 
 type Action = {
   id: string;
@@ -16,10 +16,30 @@ type Props = { onPress?: (id: string) => void };
 
 export function QuickActions({ onPress }: Props) {
   const actions: Action[] = [
-    { id: "programas", title: "Programas guiados", icon: "school", category: "Bienestar" },
-    { id: "cortos", title: "Videos cortos", icon: "play-circle-outline", category: "Actividad física" },
-    { id: "retos", title: "Retos semanales", icon: "emoji-events", category: "Comunidad" },
-    { id: "habitos", title: "Hábitos diarios", icon: "checklist", category: "Medio ambiente" },
+    {
+      id: "programas",
+      title: "Programas guiados",
+      icon: "school",
+      category: "Rutina",
+    },
+    {
+      id: "cortos",
+      title: "Videos cortos",
+      icon: "play-circle-outline",
+      category: "Actividad física",
+    },
+    {
+      id: "retos",
+      title: "Retos semanales",
+      icon: "emoji-events",
+      category: "Retos",
+    },
+    {
+      id: "habitos",
+      title: "Hábitos diarios",
+      icon: "checklist",
+      category: "Medio ambiente",
+    },
   ];
 
   return (
@@ -31,7 +51,11 @@ export function QuickActions({ onPress }: Props) {
           const { base, soft } = getCategoryColor(a.category);
 
           return (
-            <Pressable key={a.id} style={styles.tile} onPress={() => onPress?.(a.id)}>
+            <Pressable
+              key={a.id}
+              style={styles.tile}
+              onPress={() => onPress?.(a.id)}
+            >
               <View style={[styles.iconWrap, { backgroundColor: soft }]}>
                 <MaterialIcons name={a.icon} size={22} color={base} />
               </View>
@@ -69,5 +93,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tileText: { color: "white", fontSize: 12, fontWeight: "800", textAlign: "center" },
+  tileText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "center",
+  },
 });
