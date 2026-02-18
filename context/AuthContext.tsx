@@ -22,17 +22,8 @@ type AuthState = {
 };
 
 /* ─── URL base del backend ─── */
-// Tunnel público (Cloudflare) para que el celular pueda conectarse al backend
-// desde cualquier red. Para regenerar: npx cloudflared tunnel --url http://localhost:5000
-const TUNNEL_URL = "https://picking-flashers-taught-effective.trycloudflare.com/api";
-
-// IP local como fallback para cuando estés en la misma red
-const LOCAL_IP = "10.7.68.211";
-
-const API_BASE =
-  Platform.OS === "web"
-    ? "http://localhost:5000/api"          // Web → localhost
-    : TUNNEL_URL;                          // Celular físico → tunnel público
+/* ─── URL base del backend (desplegado en Render) ─── */
+const API_BASE = "https://planta-app.onrender.com/api";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
