@@ -22,13 +22,17 @@ type AuthState = {
 };
 
 /* ─── URL base del backend ─── */
-// Usa tu IP local para que el celular físico pueda conectarse al backend
+// Tunnel público (Cloudflare) para que el celular pueda conectarse al backend
+// desde cualquier red. Para regenerar: npx cloudflared tunnel --url http://localhost:5000
+const TUNNEL_URL = "https://picking-flashers-taught-effective.trycloudflare.com/api";
+
+// IP local como fallback para cuando estés en la misma red
 const LOCAL_IP = "10.7.68.211";
 
 const API_BASE =
   Platform.OS === "web"
     ? "http://localhost:5000/api"          // Web → localhost
-    : `http://${LOCAL_IP}:5000/api`;       // Celular físico / emulador → IP local
+    : TUNNEL_URL;                          // Celular físico → tunnel público
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
