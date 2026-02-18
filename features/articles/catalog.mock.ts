@@ -1,10 +1,10 @@
-// features/articles/catalog.mock.ts
 import { getAllMockArticles } from "./article.store.mock";
+import type { CategoryId } from "@/features/content/category"; 
 
 export type ArticleCard = {
   id: string;
   title: string;
-  category: "environment" | "fitness";
+  category: CategoryId; 
   coverUri?: string;
 };
 
@@ -13,5 +13,6 @@ export function getArticleCatalog(): ArticleCard[] {
     id: article.id,
     title: article.title,
     category: article.category,
+    
   }));
 }

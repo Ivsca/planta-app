@@ -34,7 +34,7 @@ type Challenge = {
   id: string;
   title: string;
   desc: string;
-  tag: "Actividad física" | "Ambiente" | "Bienestar";
+  tag: "Actividad física" | "Ambiente" | "Rutina";
   status: "Activo" | "Nuevo";
 };
 
@@ -57,7 +57,7 @@ const CHALLENGES: Challenge[] = [
     id: "c3",
     title: "5 min de respiración",
     desc: "Reduce estrés y mejora tu energía.",
-    tag: "Bienestar",
+    tag: "Rutina",
     status: "Activo",
   },
 ];

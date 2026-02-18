@@ -25,7 +25,7 @@ export const ARTICLE_1: Article = {
           body: "El cambio climático se refiere a las transformaciones profundas y duraderas que experimentan los patrones climáticos del planeta a lo largo de extensos períodos, que pueden abarcar décadas, siglos o incluso milenios. Es importante entender que el clima de la Tierra no es estático; a lo largo de su historia ha sufrido variaciones naturales debido a factores como erupciones volcánicas masivas que llenaban la atmósfera de cenizas, cambios en la radiación solar o alteraciones en la órbita terrestre. Estos procesos naturales ocurrían de manera gradual, permitiendo que los ecosistemas tuvieran tiempo para adaptarse a las nuevas condiciones.",
         },
         {
-          icon: "walk",
+          icon: "restore-from-trash",
           title: "El Origen Humano del Problema Actual",
           body: "Sin embargo, lo que hace excepcional y preocupante al fenómeno que vivimos hoy es su vertiginosa aceleración y su origen principal: la actividad humana. Desde la Revolución Industrial, nuestra dependencia de los combustibles fósiles (carbón, petróleo y gas natural) para generar energía, transportarnos y fabricar productos ha crecido de manera descontrolada. Al quemar estos combustibles, liberamos enormes cantidades de gases de efecto invernadero, como el dióxido de carbono (CO2) y el metano, a la atmósfera. Esta liberación masiva y rápida no tiene precedentes en la historia geológica reciente del planeta.",
         },

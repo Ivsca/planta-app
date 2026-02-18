@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 
 import ArticleSlideShell from "../ArticleSlideShell";
-import { ActionSlide as ActionSlideType } from "../types";
+import type { ActionSlide as ActionSlideType } from "../types";
+import type { CategoryTheme } from "../categoryTheme"; 
 
 type Props = {
   data: ActionSlideType;
@@ -11,9 +12,9 @@ type Props = {
   total: number;
   onBack: () => void;
   onNext: () => void;
+  theme: CategoryTheme; 
 };
 
-const PRIMARY = "#13EC5B";
 const TEXT_DIM = "rgba(255,255,255,0.60)";
 const CARD_BG = "rgba(18,18,24,0.35)";
 const CARD_BORDER = "rgba(255,255,255,0.10)";
@@ -24,6 +25,7 @@ export default function ActionSlide({
   total,
   onBack,
   onNext,
+  theme,
 }: Props) {
   const progressText = `${slideIndex + 1} / ${total}`;
 
@@ -32,18 +34,14 @@ export default function ActionSlide({
   );
 
   const toggle = (index: number) => {
-    setChecked((prev) =>
-      prev.map((v, i) => (i === index ? !v : v))
-    );
+    setChecked((prev) => prev.map((v, i) => (i === index ? !v : v)));
   };
 
-  const allDone = useMemo(
-    () => checked.every(Boolean),
-    [checked]
-  );
+  const allDone = useMemo(() => checked.every(Boolean), [checked]);
 
   return (
     <ArticleSlideShell
+      theme={theme}
       progressText={progressText}
       onBack={onBack}
       onNext={onNext}
@@ -51,12 +49,8 @@ export default function ActionSlide({
     >
       {/* Header */}
       <View style={styles.headerBlock}>
-        <Text style={styles.title}>
-          {data.title}
-        </Text>
-        <Text style={styles.subtitle}>
-          Pequeños cambios hoy para un mañana mejor.
-        </Text>
+        <Text style={styles.title}>{data.title}</Text>
+        <Text style={styles.subtitle}>Pequeños cambios hoy para un mañana mejor.</Text>
       </View>
 
       {/* Checklist */}
@@ -70,15 +64,14 @@ export default function ActionSlide({
               onPress={() => toggle(i)}
               style={[
                 styles.card,
-                isChecked && styles.cardChecked,
+                isChecked && {
+                  borderColor: theme.border,
+                  backgroundColor: theme.soft,
+                },
               ]}
             >
-              <View style={styles.leftIcon}>
-                <MaterialIcons
-                  name="eco"
-                  size={22}
-                  color={PRIMARY}
-                />
+              <View style={[styles.leftIcon, { backgroundColor: theme.soft }]}>
+                <MaterialIcons name="eco" size={22} color={theme.base} />
               </View>
 
               <Text
@@ -93,7 +86,7 @@ export default function ActionSlide({
               <MaterialIcons
                 name={isChecked ? "check-circle" : "radio-button-unchecked"}
                 size={24}
-                color={isChecked ? PRIMARY : "rgba(255,255,255,0.35)"}
+                color={isChecked ? theme.base : "rgba(255,255,255,0.35)"}
               />
             </Pressable>
           );
@@ -102,7 +95,7 @@ export default function ActionSlide({
 
       {/* Subtle decorative glow */}
       <View style={styles.glowWrap}>
-        <View style={styles.glow} />
+        <View style={[styles.glow, { backgroundColor: theme.base }]} />
       </View>
     </ArticleSlideShell>
   );
@@ -141,16 +134,10 @@ const styles = StyleSheet.create({
     borderColor: CARD_BORDER,
   },
 
-  cardChecked: {
-    borderColor: PRIMARY,
-    backgroundColor: "rgba(19,236,91,0.08)",
-  },
-
   leftIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(19,236,91,0.12)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -171,5 +158,11 @@ const styles = StyleSheet.create({
     marginTop: 40,
     alignItems: "center",
   },
-  
+  glow: {
+    width: 160,
+    height: 160,
+    borderRadius: 999,
+    opacity: 0.12,
+    transform: [{ scale: 1.05 }],
+  },
 });
