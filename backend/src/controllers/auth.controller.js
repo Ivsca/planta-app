@@ -32,7 +32,7 @@ const register = async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (err) {
     console.error("Error en register:", err.message);
@@ -65,7 +65,7 @@ const login = async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (err) {
     console.error("Error en login:", err.message);
@@ -134,8 +134,15 @@ const updateMe = async (req, res) => {
     await user.save();
 
     res.json({
-      user: { id: user._id, name: user.name, email: user.email },
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
+
   } catch (err) {
     console.error("Error en updateMe:", err.message);
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
