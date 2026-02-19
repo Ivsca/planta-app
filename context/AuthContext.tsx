@@ -1,12 +1,21 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { Platform } from "react-native";
 
 /* ─── Tipos ─── */
+export type UserRole = "user" | "admin";
+
 export type User = {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
 };
 
 type AuthState = {
@@ -14,25 +23,33 @@ type AuthState = {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  updateProfile: (data: { name?: string; password?: string }) => Promise<{ ok: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  updateProfile: (data: {
+    name?: string;
+    password?: string;
+  }) => Promise<{ ok: boolean; error?: string }>;
   deleteAccount: () => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 };
 
-/* ─── URL base del backend ─── */
-/* ─── URL base del backend (desplegado en Render) ─── */
 const API_BASE = "https://planta-app.onrender.com/api";
+
+// const API_BASE = "http://10.7.64.107:5000/api";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 /* ─── Almacenamiento simple (web usa localStorage, nativo usa AsyncStorage) ─── */
 const storage = {
   async get(key: string) {
-    if (Platform.OS === "web") {
-      return localStorage.getItem(key);
-    }
+    if (Platform.OS === "web") return localStorage.getItem(key);
     return AsyncStorage.getItem(key);
   },
   async set(key: string, value: string) {
@@ -51,7 +68,6 @@ const storage = {
   },
 };
 
-/* ─── Provider ─── */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -65,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const savedUser = await storage.get("auth_user");
         if (savedToken && savedUser) {
           setToken(savedToken);
-          setUser(JSON.parse(savedUser));
+          setUser(JSON.parse(savedUser) as User);
         }
       } catch {
         /* ignorar errores de storage */
@@ -83,14 +99,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+
       const data = await res.json();
+
+      console.log("LOGIN RAW RESPONSE:", data);
+      console.log("LOGIN USER:", data?.user);
 
       if (!res.ok) {
         return { ok: false, error: data.error || "Error al iniciar sesión" };
       }
 
+      // ✅ Esperamos que el backend devuelva user.role
       setToken(data.token);
-      setUser(data.user);
+      setUser(data.user as User);
       await storage.set("auth_token", data.token);
       await storage.set("auth_user", JSON.stringify(data.user));
       return { ok: true };
@@ -100,28 +121,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /* ── Register ── */
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = await res.json();
 
-      if (!res.ok) {
-        return { ok: false, error: data.error || "Error al registrarse" };
+        if (!res.ok) {
+          return { ok: false, error: data.error || "Error al registrarse" };
+        }
+
+        setToken(data.token);
+        setUser(data.user as User);
+        await storage.set("auth_token", data.token);
+        await storage.set("auth_user", JSON.stringify(data.user));
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "No se pudo conectar al servidor" };
       }
-
-      setToken(data.token);
-      setUser(data.user);
-      await storage.set("auth_token", data.token);
-      await storage.set("auth_user", JSON.stringify(data.user));
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "No se pudo conectar al servidor" };
-    }
-  }, []);
+    },
+    [],
+  );
 
   /* ── Logout ── */
   const logout = useCallback(async () => {
@@ -132,33 +156,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /* ── Update Profile ── */
-  const updateProfile = useCallback(async (data: { name?: string; password?: string }) => {
-    try {
-      if (!token) return { ok: false, error: "No autenticado" };
+  const updateProfile = useCallback(
+    async (data: { name?: string; password?: string }) => {
+      try {
+        if (!token) return { ok: false, error: "No autenticado" };
 
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
 
-      if (!res.ok) {
-        return { ok: false, error: json.error || "Error al actualizar" };
+        const json = await res.json();
+
+        if (!res.ok) {
+          return { ok: false, error: json.error || "Error al actualizar" };
+        }
+
+        // ⚠️ Si tu backend no devuelve role en /auth/me, lo preservamos del estado actual.
+        const serverUser = json.user as Partial<User>;
+        const updatedUser: User = {
+          id: serverUser.id ?? user!.id,
+          name: serverUser.name ?? user!.name,
+          email: serverUser.email ?? user!.email,
+          role: serverUser.role ?? user!.role,
+        };
+
+        setUser(updatedUser);
+        await storage.set("auth_user", JSON.stringify(updatedUser));
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "No se pudo conectar al servidor" };
       }
-
-      // Actualizar estado local con los datos nuevos
-      const updatedUser = json.user as User;
-      setUser(updatedUser);
-      await storage.set("auth_user", JSON.stringify(updatedUser));
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "No se pudo conectar al servidor" };
-    }
-  }, [token]);
+    },
+    [token, user],
+  );
 
   /* ── Delete Account ── */
   const deleteAccount = useCallback(async () => {
@@ -167,17 +202,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const res = await fetch(`${API_BASE}/auth/me`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
+
       const json = await res.json();
 
       if (!res.ok) {
         return { ok: false, error: json.error || "Error al eliminar cuenta" };
       }
 
-      // Limpiar sesión
       setUser(null);
       setToken(null);
       await storage.remove("auth_token");
@@ -207,7 +240,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ─── Hook para usar el contexto ─── */
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");

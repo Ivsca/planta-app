@@ -6,7 +6,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/auth.routes");
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 
 /* ── Middlewares ── */
 app.use(cors());
@@ -25,4 +25,9 @@ connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Backend corriendo en http://localhost:${PORT}`);
   });
+
+//   app.listen(PORT, "0.0.0.0", () => {
+//   console.log(`Backend corriendo en http://0.0.0.0:${PORT}`);
+// });
+
 });

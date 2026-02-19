@@ -12,6 +12,14 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true, minlength: 6 },
+
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+      index: true,
+    },
+    
     level: { type: Number, default: 1 },
     xp: { type: Number, default: 0 },
     streak: { type: Number, default: 0 },

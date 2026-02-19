@@ -1,4 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter, type Href } from "expo-router";
+
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Stitch } from "../../constants/theme";
@@ -22,9 +25,14 @@ const AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCwrJxdLJcdBEJDPPz2M9uAgpBh9PS9fSNrRCyp9DhNJJ5yRgCnqVZ68A4KD_8C_vmwpmZEMZVqxhS7ueUa00Bu4wcAjJSBdWzgWVJL9dKVrK_MZt6lVLyoU11HxmWpWLE0ag-m90PEHk5CgEkpb5r94qAOTKr7pAiu8ULK4LZaxN4ppZg2rBYdr-XVX1jXveeOSWXr5Kmnj48Q4qYM-DHzWNyDdUKiptz6Kh50Aim4srGpzR2yXzEwR0d_-GdbQq5M96-iCjtq_2E";
 
 export default function ProfileScreen() {
+  const router = useRouter();
+
   const [notifications, setNotifications] = useState(true);
   const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
   const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+
+  // ⚠️ Esto depende de que tu AuthContext exponga user.role
+  const isAdmin = isAuthenticated && user?.role === "admin";
 
   /* ── Estado de edición ── */
   const [isEditing, setIsEditing] = useState(false);
@@ -98,17 +106,44 @@ export default function ProfileScreen() {
             }
           },
         },
-      ]
+      ],
     );
+  };
+
+  const onPressSettings = () => {
+    requireAuth(() => {
+      // Ajusta a tu ruta real de settings si existe
+      // router.push("/settings");
+    });
+  };
+
+  const onPressActivity = () => {
+    requireAuth(() => {
+      // Ajusta a tu ruta real si existe
+      // router.push("/activity");
+    });
+  };
+
+  const onPressSaved = () => {
+    requireAuth(() => {
+      // Ajusta a tu ruta real si existe
+      // router.push("/saved");
+    });
+  };
+
+  const onPressAdminPanel = () => {
+    // si llegaste aquí, isAdmin ya es true
+    router.push("/admin" as Href);
   };
 
   return (
     <View style={styles.screen}>
       <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
+
       <View style={styles.header}>
         <Text style={styles.h1}>Perfil</Text>
 
-        <Pressable style={styles.iconBtn} hitSlop={10} onPress={() => requireAuth(() => {})}>
+        <Pressable style={styles.iconBtn} hitSlop={10} onPress={onPressSettings}>
           <MaterialIcons name="settings" size={20} color={Stitch.colors.primary} />
         </Pressable>
       </View>
@@ -173,6 +208,7 @@ export default function ProfileScreen() {
                 <Pressable style={styles.editCancelBtn} onPress={cancelEditing}>
                   <Text style={styles.editCancelText}>Cancelar</Text>
                 </Pressable>
+
                 <Pressable
                   style={[styles.editSaveBtn, editLoading && { opacity: 0.7 }]}
                   onPress={handleSave}
@@ -212,17 +248,15 @@ export default function ProfileScreen() {
         <Text style={styles.sectionLabel}>General</Text>
 
         <GlassCard style={styles.menuCard}>
-          <MenuRow
-            icon="analytics"
-            title="Mi actividad"
-            onPress={() => {}}
-          />
+          {isAdmin ? (
+            <MenuRow icon="admin-panel-settings" title="Panel de administrador" onPress={onPressAdminPanel} />
+          ) : (
+            <MenuRow icon="analytics" title="Mi actividad" onPress={onPressActivity} />
+          )}
+
           <Divider />
-          <MenuRow
-            icon="bookmark"
-            title="Contenido guardado"
-            onPress={() => {}}
-          />
+
+          <MenuRow icon="bookmark" title="Contenido guardado" onPress={onPressSaved} />
         </GlassCard>
 
         {/* Ajustes */}
@@ -284,7 +318,15 @@ export default function ProfileScreen() {
             </>
           ) : (
             <Pressable
-              style={[styles.logoutBtn, { backgroundColor: Stitch.colors.primary, borderRadius: 999, paddingHorizontal: 24, paddingVertical: 12 }]}
+              style={[
+                styles.logoutBtn,
+                {
+                  backgroundColor: Stitch.colors.primary,
+                  borderRadius: 999,
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                },
+              ]}
               onPress={() => requireAuth(() => {})}
             >
               <MaterialIcons name="login" size={18} color={Stitch.colors.bg} />
