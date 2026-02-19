@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Stitch } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/use-require-auth";
 
 type Medal = {
@@ -16,6 +17,9 @@ type Medal = {
 };
 
 export default function AchievementsScreen() {
+  const { isAuthenticated } = useAuth();
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+
   // Mock (luego lo conectas a backend/perfil)
   const level = 12;
   const xp = 850;
@@ -57,7 +61,37 @@ export default function AchievementsScreen() {
     []
   );
 
-  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+  /* ── Pantalla bloqueada para usuarios no autenticados ── */
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.screen}>
+        <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
+
+        <View style={styles.header}>
+          <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={styles.headerOverlay} />
+          <Text style={styles.headerTitleLeft}>Logros</Text>
+        </View>
+
+        <View style={styles.lockedContainer}>
+          <View style={styles.lockedIconWrap}>
+            <MaterialIcons name="lock-outline" size={56} color={Stitch.colors.primary} />
+          </View>
+          <Text style={styles.lockedTitle}>Inicia sesión para ver tus logros</Text>
+          <Text style={styles.lockedDesc}>
+            Registra tu progreso, desbloquea medallas y compite con la comunidad.
+          </Text>
+          <Pressable
+            style={styles.lockedBtn}
+            onPress={() => requireAuth(() => {})}
+          >
+            <MaterialIcons name="login" size={20} color="#000" />
+            <Text style={styles.lockedBtnText}>Iniciar sesión</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -383,6 +417,54 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     lineHeight: 14,
+  },
+
+  // Locked screen
+  lockedContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  lockedIconWrap: {
+    width: 100,
+    height: 100,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.10)",
+    borderWidth: 2,
+    borderColor: "rgba(33,196,93,0.20)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  lockedTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "900",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  lockedDesc: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  lockedBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Stitch.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 18,
+  },
+  lockedBtnText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "900",
   },
 
   // CTA
