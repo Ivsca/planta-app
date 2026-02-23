@@ -54,8 +54,13 @@ type AuthState = {
   handleUnauthorized: () => Promise<void>;
 };
 
+/* ─── URL base del backend ─── */
+/* ─── URL base del backend (desplegado en Render) ─── */
+// const API_BASE = "https://planta-app.onrender.com/api";
+
+
 // ✅ Ideal: mover a config/env central. Por ahora lo dejamos aquí.
-const API_BASE = "http://10.7.64.107:5000/api";
+const API_BASE = "http://172.19.128.1:5000/api";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
