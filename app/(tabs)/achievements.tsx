@@ -7,6 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Stitch } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/use-require-auth";
 import { useAuth } from "@/context/AuthContext";
 
@@ -31,176 +32,82 @@ type MedalCatalogItem = {
   icon: keyof typeof MaterialIcons.glyphMap;
 };
 
-type EarnedMedal = {
-  id: string;
-  earnedAt?: string;
-  meta?: Record<string, any>;
-};
-
-type AchievementsSummary = {
-  streak: {
-    current: number;
-    best: number;
-    lastActiveLocalDate: string | null;
-  };
-  progress: {
-    completed: {
-      article: number;
-      routine: number;
-      challenge: number;
-    };
-  };
-  challenges: {
-    completedCount: number;
-    recent: Array<{
-      refId: string;
-      at: string;
-      meta?: Record<string, any>;
-    }>;
-  };
-  medals: EarnedMedal[];
-};
-
-/**
- * Catálogo: lo que la UI sabe mostrar.
- * Si el backend agrega nuevas medallas, no rompes: simplemente no se verán hasta que las añadas aquí.
- */
-const MEDAL_CATALOG: MedalCatalogItem[] = [
-  {
-    id: "FIRST_ARTICLE",
-    title: "Primera Lectura",
-    desc: "Completaste tu primer artículo",
-    icon: "menu-book",
-  },
-  {
-    id: "FIRST_ROUTINE",
-    title: "Primera Rutina",
-    desc: "Completaste tu primera rutina",
-    icon: "fitness-center",
-  },
-  {
-    id: "FIRST_CHALLENGE",
-    title: "Iniciador",
-    desc: "Completaste tu primer reto",
-    icon: "flag",
-  },
-  {
-    id: "STREAK_3",
-    title: "Constante",
-    desc: "3 días seguidos con actividad completada",
-    icon: "local-fire-department",
-  },
-  {
-    id: "STREAK_7",
-    title: "Racha de 7",
-    desc: "7 días seguidos con actividad completada",
-    icon: "whatshot",
-  },
-  {
-    id: "CHALLENGES_5",
-    title: "Retador",
-    desc: "Completaste 5 retos",
-    icon: "emoji-events",
-  },
-];
-
 export default function AchievementsScreen() {
-  const { token } = useAuth();
-  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } =
-    useRequireAuth();
+  const { isAuthenticated } = useAuth();
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<AchievementsSummary | null>(null);
+  // Mock (luego lo conectas a backend/perfil)
+  const level = 12;
+  const xp = 850;
+  const xpMax = 1000;
+  const streakDays = 7;
+  const challengesDone = 24;
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const progress = Math.max(0, Math.min(1, xp / xpMax));
 
-    async function load() {
-      if (!token) {
-        setSummary(null);
-        setError(null);
-        setLoading(false);
-        return;
-      }
+  const medals: Medal[] = useMemo(
+    () => [
+      {
+        id: "m1",
+        title: "Iniciador",
+        desc: "Primer reto completado",
+        icon: "eco",
+      },
+      {
+        id: "m2",
+        title: "Madrugador",
+        desc: "7 AM racha activa",
+        icon: "wb-sunny",
+      },
+      {
+        id: "m3",
+        title: "Maestro de Planta",
+        desc: "Completa 50 procesos",
+        icon: "factory",
+        locked: true,
+      },
+      {
+        id: "m4",
+        title: "Guardián Nocturno",
+        desc: "Eficiencia 100% de noche",
+        icon: "shield-moon",
+        locked: true,
+      },
+    ],
+    []
+  );
 
-      try {
-        setLoading(true);
-        setError(null);
+  /* ── Pantalla bloqueada para usuarios no autenticados ── */
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.screen}>
+        <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
 
-        const res = await fetch(`${API_BASE}/achievements/summary`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
+        <View style={styles.header}>
+          <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={styles.headerOverlay} />
+          <Text style={styles.headerTitleLeft}>Logros</Text>
+        </View>
 
-        // intenta parsear JSON incluso si res no OK (para mostrar error si viene)
-        const data = (await res.json().catch(() => null)) as AchievementsSummary | null;
-
-        if (!res.ok) {
-          // 401: token inválido/expirado -> la app debe tratarlo como no logueado
-          // (ideal: tu AuthContext debería limpiar token en ese caso)
-          setSummary(null);
-          setError(
-            (data as any)?.error ||
-              `Error al cargar logros (${res.status})`
-          );
-          return;
-        }
-
-        setSummary(data);
-      } catch (e: any) {
-        if (e?.name === "AbortError") return;
-        setSummary(null);
-        setError("No se pudieron cargar los logros. Revisa tu conexión.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-    return () => controller.abort();
-  }, [token]);
-
-  // Datos derivados (con defaults seguros)
-  const streakDays = summary?.streak?.current ?? 0;
-  const streakBest = summary?.streak?.best ?? 0;
-
-  const completedArticles = summary?.progress?.completed?.article ?? 0;
-  const completedRoutines = summary?.progress?.completed?.routine ?? 0;
-  const completedChallenges = summary?.progress?.completed?.challenge ?? 0;
-
-  const earnedSet = useMemo(() => {
-    const ids = new Set<string>();
-    for (const m of summary?.medals ?? []) {
-      if (m?.id) ids.add(String(m.id));
-    }
-    return ids;
-  }, [summary?.medals]);
-
-  const medals = useMemo(() => {
-    return MEDAL_CATALOG.map((m) => ({
-      ...m,
-      locked: !earnedSet.has(m.id),
-    }));
-  }, [earnedSet]);
-
-  const earnedCount = medals.filter((m) => !m.locked).length;
-  const totalCount = medals.length;
-
-  // Progreso tipo “barra” (MVP):
-  // Como el backend no envía XP/level todavía, mostramos progreso basado en completados.
-  // Si luego quieres XP real, añade level/xp al /achievements/summary o crea /me.
-  const progressValue = useMemo(() => {
-    // meta simple para que la barra “se mueva” en MVP
-    const score = completedArticles + completedRoutines * 2 + completedChallenges * 3;
-    const max = 50; // ajustable
-    return Math.max(0, Math.min(1, score / max));
-  }, [completedArticles, completedRoutines, completedChallenges]);
-
-  const progressLabel = useMemo(() => {
-    const score = completedArticles + completedRoutines * 2 + completedChallenges * 3;
-    return `${score} / 50`;
-  }, [completedArticles, completedRoutines, completedChallenges]);
+        <View style={styles.lockedContainer}>
+          <View style={styles.lockedIconWrap}>
+            <MaterialIcons name="lock-outline" size={56} color={Stitch.colors.primary} />
+          </View>
+          <Text style={styles.lockedTitle}>Inicia sesión para ver tus logros</Text>
+          <Text style={styles.lockedDesc}>
+            Registra tu progreso, desbloquea medallas y compite con la comunidad.
+          </Text>
+          <Pressable
+            style={styles.lockedBtn}
+            onPress={() => requireAuth(() => {})}
+          >
+            <MaterialIcons name="login" size={20} color="#000" />
+            <Text style={styles.lockedBtnText}>Iniciar sesión</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -636,6 +543,55 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
 
+  // Locked screen
+  lockedContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  lockedIconWrap: {
+    width: 100,
+    height: 100,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.10)",
+    borderWidth: 2,
+    borderColor: "rgba(33,196,93,0.20)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  lockedTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "900",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  lockedDesc: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  lockedBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Stitch.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 18,
+  },
+  lockedBtnText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+  // CTA
   ctaBtn: {
     marginTop: 22,
     borderRadius: 18,
