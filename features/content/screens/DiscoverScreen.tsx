@@ -3,6 +3,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { getCategoryTheme } from "../../../features/articles/categoryTheme";
 import { CATEGORY_LABEL, type CategoryId } from "../category";
 
@@ -25,15 +26,13 @@ import { FEATURED, FEED } from "../data/content.mock";
 import { applyDiscoverFilters, formatViews } from "../selectors";
 import type { ContentItem } from "../types";
 
+import { useAuth } from "../../../context/AuthContext";
+import { useRequireAuth } from "../../../hooks/use-require-auth";
+import { getSavedIds, toggleSavedId } from "../savedStorage";
+
 type UiTypeChip = "Todo" | "Video" | "Artículo" | "Rutina" | "Reto";
 
-const TYPE_CHIPS: UiTypeChip[] = [
-  "Todo",
-  "Video",
-  "Artículo",
-  "Rutina",
-  "Reto",
-];
+const TYPE_CHIPS: UiTypeChip[] = ["Todo", "Video", "Artículo", "Rutina", "Reto"];
 
 function badgeForFeatured(item: ContentItem, idx: number) {
   if (item.isNew) return "Nuevo";
@@ -80,23 +79,56 @@ function toImageSource(
     : (thumb as ImageSourcePropType);
 }
 
+const CATEGORY_IDS: CategoryId[] = [
+  "environment",
+  "fitness",
+  "routine",
+  "challenges",
+];
+
+function isCategoryId(v: unknown): v is CategoryId {
+  return typeof v === "string" && (CATEGORY_IDS as string[]).includes(v);
+}
+
 export default function DiscoverScreen() {
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+  const { requireAuth } = useRequireAuth();
 
   const [query, setQuery] = useState("");
   const [uiType, setUiType] = useState<UiTypeChip>("Todo");
-  const [saved, setSaved] = useState<Record<string, boolean>>({});
+
+  // ✅ Guardados reales (persistidos) en Set para lookup rápido
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const listRef = useRef<FlatList<ContentItem>>(null);
 
-  // ✅ búsqueda real (evita espacios)
   const normalizedQuery = query.trim();
   const isSearching = normalizedQuery.length > 0;
 
   const typeFilter = typeToDomain(uiType);
 
+  // ✅ recargar guardados cuando la pantalla vuelve a enfoque (y al entrar)
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+
+      (async () => {
+        if (!isAuthenticated || !user?.id) {
+          if (alive) setSavedIds(new Set());
+          return;
+        }
+        const ids = await getSavedIds(user.id);
+        if (alive) setSavedIds(new Set(ids));
+      })();
+
+      return () => {
+        alive = false;
+      };
+    }, [isAuthenticated, user?.id]),
+  );
+
   const filtered = useMemo(() => {
-    // ✅ ya NO filtramos por categoría: chip siempre "Todo"
     const base = applyDiscoverFilters({
       items: FEED,
       query: normalizedQuery,
@@ -106,10 +138,6 @@ export default function DiscoverScreen() {
     if (typeFilter === "all") return base;
     return base.filter((x) => x.type === typeFilter);
   }, [normalizedQuery, typeFilter]);
-
-  const toggleSave = useCallback((id: string) => {
-    setSaved((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
 
   const openDetail = useCallback(
     (id: string) => {
@@ -132,23 +160,42 @@ export default function DiscoverScreen() {
     [scrollTop],
   );
 
+  const toggleSave = useCallback(
+    (id: string) => {
+      requireAuth(async () => {
+        if (!user?.id) return;
+
+        // Optimistic UI
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+
+        try {
+          const res = await toggleSavedId(user.id, id);
+          // Sincroniza con lo persistido (source of truth)
+          setSavedIds(new Set(res.ids));
+        } catch {
+          // Revertir si falló
+          setSavedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+          });
+        }
+      });
+    },
+    [requireAuth, user?.id],
+  );
+
   const renderRow = useCallback(
     ({ item }: { item: ContentItem }) => {
       const uiTypeLabel = typeLabel(item.type);
-      const isSaved = !!saved[item.id];
-
+      const isSaved = savedIds.has(item.id);
       const thumbSource = toImageSource(item.thumbnail);
-
-      const CATEGORY_IDS: CategoryId[] = [
-        "environment",
-        "fitness",
-        "routine",
-        "challenges",
-      ];
-
-      function isCategoryId(v: unknown): v is CategoryId {
-        return typeof v === "string" && (CATEGORY_IDS as string[]).includes(v);
-      }
 
       return (
         <View style={styles.rowContainer}>
@@ -217,13 +264,13 @@ export default function DiscoverScreen() {
                 isSaved && { color: Stitch.colors.primary },
               ]}
             >
-              Guardar
+              {isSaved ? "Guardado" : "Guardar"}
             </Text>
           </Pressable>
         </View>
       );
     },
-    [openDetail, saved, toggleSave],
+    [openDetail, savedIds, toggleSave],
   );
 
   return (
@@ -296,8 +343,6 @@ export default function DiscoverScreen() {
         </ScrollView>
       </View>
 
-      {/* ✅ Solo chips por tipo */}
-
       <FlatList<ContentItem>
         ref={listRef}
         data={filtered}
@@ -306,7 +351,6 @@ export default function DiscoverScreen() {
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
         renderItem={renderRow}
-        // ✅ header SOLO cuando NO estás buscando
         ListHeaderComponent={
           isSearching ? null : (
             <View>
@@ -371,7 +415,6 @@ export default function DiscoverScreen() {
             </View>
           )
         }
-        // ✅ “No encontrado” SOLO cuando hay búsqueda
         ListEmptyComponent={
           isSearching ? (
             <View style={styles.emptyWrap}>
@@ -388,7 +431,7 @@ export default function DiscoverScreen() {
   );
 }
 
-// ✅ estilos: mismos tuyos + estilos de empty state
+// ✅ estilos: mantengo los tuyos tal cual
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Stitch.colors.bg },
   stickyHeader: {
@@ -535,13 +578,6 @@ const styles = StyleSheet.create({
   thumb: { width: "100%", height: "100%" },
 
   rowBody: { flex: 1, justifyContent: "center", minWidth: 0 },
-  kicker: {
-    color: Stitch.colors.primary,
-    fontSize: 10,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-  },
   rowTitle: { color: "#fff", fontSize: 14, fontWeight: "800", marginTop: 3 },
   rowMeta: {
     color: "rgba(255,255,255,0.45)",
@@ -564,16 +600,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ✅ empty state (solo en búsqueda)
-  emptyWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 26,
-  },
-  emptyTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "900",
-  },
+  emptyWrap: { paddingHorizontal: 16, paddingTop: 26 },
+  emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "900" },
   emptySub: {
     marginTop: 6,
     color: "rgba(255,255,255,0.55)",
@@ -582,10 +610,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  kickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  kickerRow: { flexDirection: "row", alignItems: "center" },
   kickerCategory: {
     fontSize: 10,
     fontWeight: "900",
@@ -598,7 +623,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   kickerType: {
-    color: "rgba(255,255,255,0.75)", // o Stitch.colors.primary si quieres
+    color: "rgba(255,255,255,0.75)",
     fontSize: 10,
     fontWeight: "900",
     textTransform: "uppercase",

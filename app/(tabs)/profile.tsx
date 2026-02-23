@@ -1,19 +1,19 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
-
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+
+import { getAvatarUri } from "../profile/avatarStorage";
 
 import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
@@ -21,252 +21,160 @@ import { Stitch } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/use-require-auth";
 
-const AVATAR =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCwrJxdLJcdBEJDPPz2M9uAgpBh9PS9fSNrRCyp9DhNJJ5yRgCnqVZ68A4KD_8C_vmwpmZEMZVqxhS7ueUa00Bu4wcAjJSBdWzgWVJL9dKVrK_MZt6lVLyoU11HxmWpWLE0ag-m90PEHk5CgEkpb5r94qAOTKr7pAiu8ULK4LZaxN4ppZg2rBYdr-XVX1jXveeOSWXr5Kmnj48Q4qYM-DHzWNyDdUKiptz6Kh50Aim4srGpzR2yXzEwR0d_-GdbQq5M96-iCjtq_2E";
-
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [notifications, setNotifications] = useState(true);
-  const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
-  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } =
+    useRequireAuth();
 
-  // ⚠️ Esto depende de que tu AuthContext exponga user.role
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+
+      (async () => {
+        if (!isAuthenticated || !user?.id) {
+          if (alive) setAvatarUri(null);
+          return;
+        }
+        const saved = await getAvatarUri(user.id);
+        if (alive) setAvatarUri(saved);
+      })();
+
+      return () => {
+        alive = false;
+      };
+    }, [isAuthenticated, user?.id]),
+  );
+
   const isAdmin = isAuthenticated && user?.role === "admin";
-
-  /* ── Estado de edición ── */
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editPassword, setEditPassword] = useState("");
-  const [editError, setEditError] = useState("");
-  const [editLoading, setEditLoading] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-
   const displayName = isAuthenticated && user ? user.name : "Visitante";
-
-  const startEditing = () => {
-    setEditName(user?.name || "");
-    setEditPassword("");
-    setEditError("");
-    setIsEditing(true);
-  };
-
-  const cancelEditing = () => {
-    setIsEditing(false);
-    setEditError("");
-  };
-
-  const handleSave = async () => {
-    setEditError("");
-
-    const data: { name?: string; password?: string } = {};
-
-    if (editName.trim() && editName.trim() !== user?.name) {
-      data.name = editName.trim();
-    }
-    if (editPassword) {
-      if (editPassword.length < 6) {
-        setEditError("La contraseña debe tener al menos 6 caracteres");
-        return;
-      }
-      data.password = editPassword;
-    }
-
-    if (Object.keys(data).length === 0) {
-      setIsEditing(false);
-      return;
-    }
-
-    setEditLoading(true);
-    const result = await updateProfile(data);
-    setEditLoading(false);
-
-    if (result.ok) {
-      setIsEditing(false);
-    } else {
-      setEditError(result.error || "Error al actualizar");
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Eliminar cuenta",
-      "¿Estás seguro? Esta acción no se puede deshacer. Se borrarán todos tus datos permanentemente.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            setDeleteLoading(true);
-            const result = await deleteAccount();
-            setDeleteLoading(false);
-            if (!result.ok) {
-              Alert.alert("Error", result.error || "No se pudo eliminar la cuenta");
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const onPressSettings = () => {
-    requireAuth(() => {
-      // Ajusta a tu ruta real de settings si existe
-      // router.push("/settings");
-    });
-  };
 
   const onPressActivity = () => {
     requireAuth(() => {
-      // Ajusta a tu ruta real si existe
-      // router.push("/activity");
+      router.push("/profile/activity");
     });
   };
 
+
   const onPressSaved = () => {
     requireAuth(() => {
-      // Ajusta a tu ruta real si existe
-      // router.push("/saved");
+      router.push("/saved" as Href);
     });
   };
 
   const onPressAdminPanel = () => {
-    // si llegaste aquí, isAdmin ya es true
     router.push("/admin" as Href);
   };
 
   return (
     <View style={styles.screen}>
-      <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
+      <LoginModal
+        visible={loginModalVisible}
+        onDismiss={dismissLogin}
+        onSuccess={onLoginSuccess}
+      />
 
-      <View style={styles.header}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.h1}>Perfil</Text>
-
-        <Pressable style={styles.iconBtn} hitSlop={10} onPress={onPressSettings}>
-          <MaterialIcons name="settings" size={20} color={Stitch.colors.primary} />
-        </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
-              <Image source={{ uri: AVATAR }} style={styles.avatar} />
-            </View>
-
-            <View style={styles.proPill}>
-              <Text style={styles.proText}>PRO</Text>
+              <View style={styles.avatarMask}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                ) : (
+                  <MaterialIcons
+                    name="person"
+                    size={54}
+                    color="rgba(255,255,255,0.35)"
+                  />
+                )}
+              </View>
             </View>
           </View>
 
-          {isEditing ? (
-            /* ── Modo edición ── */
-            <View style={styles.editSection}>
-              <Text style={styles.editLabel}>Nombre</Text>
-              <View style={styles.editInputWrap}>
-                <MaterialIcons name="person" size={18} color="rgba(255,255,255,0.35)" />
-                <TextInput
-                  style={styles.editInput}
-                  value={editName}
-                  onChangeText={setEditName}
-                  placeholder="Tu nombre"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
-                  autoCapitalize="words"
-                />
+          <>
+            <Text style={styles.name}>{displayName}</Text>
+
+            <View style={styles.metaRow}>
+              <View style={styles.levelPill}>
+                <Text style={styles.levelText}>
+                  {isAuthenticated && user?.role === "admin"
+                    ? "Administrador"
+                    : "Usuario"}
+                </Text>
               </View>
-
-              <Text style={styles.editLabel}>Correo (no editable)</Text>
-              <View style={[styles.editInputWrap, { opacity: 0.5 }]}>
-                <MaterialIcons name="email" size={18} color="rgba(255,255,255,0.35)" />
-                <Text style={styles.editInputDisabled}>{user?.email}</Text>
-                <MaterialIcons name="lock" size={14} color="rgba(255,255,255,0.25)" />
-              </View>
-
-              <Text style={styles.editLabel}>Nueva contraseña (opcional)</Text>
-              <View style={styles.editInputWrap}>
-                <MaterialIcons name="lock" size={18} color="rgba(255,255,255,0.35)" />
-                <TextInput
-                  style={styles.editInput}
-                  value={editPassword}
-                  onChangeText={setEditPassword}
-                  placeholder="Dejar vacío para no cambiar"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
-                  secureTextEntry
-                />
-              </View>
-
-              {!!editError && (
-                <View style={styles.editErrorRow}>
-                  <MaterialIcons name="error-outline" size={14} color="#EF4444" />
-                  <Text style={styles.editErrorText}>{editError}</Text>
-                </View>
-              )}
-
-              <View style={styles.editBtns}>
-                <Pressable style={styles.editCancelBtn} onPress={cancelEditing}>
-                  <Text style={styles.editCancelText}>Cancelar</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.editSaveBtn, editLoading && { opacity: 0.7 }]}
-                  onPress={handleSave}
-                  disabled={editLoading}
-                >
-                  {editLoading ? (
-                    <ActivityIndicator color={Stitch.colors.bg} size="small" />
-                  ) : (
-                    <Text style={styles.editSaveText}>Guardar</Text>
-                  )}
-                </Pressable>
-              </View>
+              <Text style={styles.metaText}>
+                {isAuthenticated ? user?.email : "Sin sesión"}
+              </Text>
             </View>
-          ) : (
-            /* ── Modo visualización ── */
-            <>
-              <Text style={styles.name}>{displayName}</Text>
 
-              <View style={styles.metaRow}>
-                <View style={styles.levelPill}>
-                  <Text style={styles.levelText}>Nivel 3</Text>
-                </View>
-                <Text style={styles.metaText}>Planta de Transformación</Text>
-              </View>
-
-              {isAuthenticated && (
-                <Pressable style={styles.editProfileBtn} onPress={startEditing}>
-                  <MaterialIcons name="edit" size={16} color={Stitch.colors.primary} />
-                  <Text style={styles.editProfileText}>Editar perfil</Text>
-                </Pressable>
-              )}
-            </>
-          )}
+            {isAuthenticated && (
+              <Pressable
+                style={styles.editProfileBtn}
+                onPress={() => router.push("/profile/edit")}
+              >
+                <MaterialIcons
+                  name="edit"
+                  size={16}
+                  color={Stitch.colors.primary}
+                />
+                <Text style={styles.editProfileText}>Editar perfil</Text>
+              </Pressable>
+            )}
+          </>
         </View>
 
-        {/* General */}
         <Text style={styles.sectionLabel}>General</Text>
 
         <GlassCard style={styles.menuCard}>
           {isAdmin ? (
-            <MenuRow icon="admin-panel-settings" title="Panel de administrador" onPress={onPressAdminPanel} />
+            <MenuRow
+              icon="admin-panel-settings"
+              title="Panel de administrador"
+              onPress={onPressAdminPanel}
+            />
           ) : (
-            <MenuRow icon="analytics" title="Mi actividad" onPress={onPressActivity} />
+            <MenuRow
+              icon="analytics"
+              title="Mi actividad"
+              onPress={onPressActivity}
+            />
           )}
 
           <Divider />
-
-          <MenuRow icon="bookmark" title="Contenido guardado" onPress={onPressSaved} />
+           <MenuRow
+           icon="bookmark"
+            title="Contenido guardado"
+            onPress={onPressSaved }
+          />
         </GlassCard>
 
-        {/* Ajustes */}
         <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Ajustes</Text>
 
         <GlassCard style={styles.menuCard}>
           <View style={styles.toggleRow}>
             <View style={styles.rowLeft}>
               <View style={styles.rowIcon}>
-                <MaterialIcons name="notifications" size={20} color={Stitch.colors.primary} />
+                <MaterialIcons
+                  name="notifications"
+                  size={20}
+                  color={Stitch.colors.primary}
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>Notificaciones</Text>
@@ -286,36 +194,25 @@ export default function ProfileScreen() {
           </View>
 
           <Divider />
-
-          <MenuRow icon="lock" title="Privacidad" onPress={() => {}} />
+          <MenuRow
+            icon="lock"
+            title="Seguridad y privacidad"
+            onPress={() => router.push("/settings/privacy" as Href)}
+          />
           <Divider />
-          <MenuRow icon="help" title="Ayuda" onPress={() => {}} />
+          <MenuRow icon="help" title="Soporte" onPress={() => router.push("/settings/help" as Href)} />
         </GlassCard>
 
-        {/* Login / Logout */}
         <View style={styles.logoutWrap}>
           {isAuthenticated ? (
-            <>
-              <Pressable style={styles.logoutBtn} onPress={logout}>
-                <MaterialIcons name="logout" size={18} color="rgba(255,255,255,0.55)" />
-                <Text style={styles.logoutText}>Cerrar sesión</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.deleteBtn, deleteLoading && { opacity: 0.7 }]}
-                onPress={handleDeleteAccount}
-                disabled={deleteLoading}
-              >
-                {deleteLoading ? (
-                  <ActivityIndicator color="#EF4444" size="small" />
-                ) : (
-                  <>
-                    <MaterialIcons name="delete-forever" size={18} color="#EF4444" />
-                    <Text style={styles.deleteText}>Eliminar cuenta</Text>
-                  </>
-                )}
-              </Pressable>
-            </>
+            <Pressable style={styles.logoutBtn} onPress={logout}>
+              <MaterialIcons
+                name="logout"
+                size={18}
+                color="rgba(255,255,255,0.55)"
+              />
+              <Text style={styles.logoutText}>Cerrar sesión</Text>
+            </Pressable>
           ) : (
             <Pressable
               style={[
@@ -330,7 +227,14 @@ export default function ProfileScreen() {
               onPress={() => requireAuth(() => {})}
             >
               <MaterialIcons name="login" size={18} color={Stitch.colors.bg} />
-              <Text style={[styles.logoutText, { color: Stitch.colors.bg, fontWeight: "900" }]}>Iniciar sesión</Text>
+              <Text
+                style={[
+                  styles.logoutText,
+                  { color: Stitch.colors.bg, fontWeight: "900" },
+                ]}
+              >
+                Iniciar sesión
+              </Text>
             </Pressable>
           )}
         </View>
@@ -359,7 +263,11 @@ function MenuRow({
         <Text style={styles.rowTitle}>{title}</Text>
       </View>
 
-      <MaterialIcons name="chevron-right" size={22} color="rgba(255,255,255,0.30)" />
+      <MaterialIcons
+        name="chevron-right"
+        size={22}
+        color="rgba(255,255,255,0.30)"
+      />
     </Pressable>
   );
 }
@@ -373,7 +281,6 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 16,
-    paddingTop: 18,
     paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -382,19 +289,12 @@ const styles = StyleSheet.create({
     borderBottomColor: Stitch.colors.divider,
   },
   h1: { color: "#fff", fontSize: 24, fontWeight: "900", letterSpacing: -0.2 },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    backgroundColor: "rgba(33,196,93,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 
   content: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 24 },
 
   hero: { alignItems: "center", paddingVertical: 8, marginBottom: 14 },
   avatarWrap: { position: "relative" },
+
   avatarRing: {
     width: 132,
     height: 132,
@@ -403,24 +303,30 @@ const styles = StyleSheet.create({
     borderColor: "rgba(33,196,93,0.20)",
     padding: 4,
   },
-  avatar: { width: "100%", height: "100%", borderRadius: 999 },
 
-  proPill: {
-    position: "absolute",
-    right: 6,
-    bottom: 6,
-    backgroundColor: Stitch.colors.primary,
+  avatarMask: {
+    flex: 1,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 2,
-    borderColor: Stitch.colors.bg,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
-  proText: { color: "#000", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
 
   name: { color: "#fff", fontSize: 24, fontWeight: "900", marginTop: 12 },
 
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+  },
   levelPill: {
     backgroundColor: "rgba(33,196,93,0.20)",
     borderWidth: 1,
@@ -430,7 +336,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   levelText: { color: Stitch.colors.primary, fontSize: 13, fontWeight: "900" },
-
   metaText: { color: "rgba(33,196,93,0.60)", fontSize: 13, fontWeight: "700" },
 
   sectionLabel: {
@@ -444,11 +349,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  menuCard: {
-    borderRadius: 18,
-    overflow: "hidden",
-    paddingVertical: 2,
-  },
+  menuCard: { borderRadius: 18, overflow: "hidden", paddingVertical: 2 },
 
   row: {
     paddingHorizontal: 14,
@@ -469,7 +370,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(33,196,93,0.12)",
   },
   rowTitle: { color: "#fff", fontSize: 14, fontWeight: "800" },
-  rowSub: { color: "rgba(255,255,255,0.50)", fontSize: 12, fontWeight: "600", marginTop: 2 },
+  rowSub: {
+    color: "rgba(255,255,255,0.50)",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
 
   toggleRow: {
     paddingHorizontal: 14,
@@ -496,21 +402,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 999,
   },
-  logoutText: { color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: "700" },
-
-  deleteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.25)",
+  logoutText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontWeight: "700",
   },
-  deleteText: { color: "#EF4444", fontSize: 13, fontWeight: "700" },
 
-  /* ── Estilos de edición de perfil ── */
   editProfileBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -527,85 +424,5 @@ const styles = StyleSheet.create({
     color: Stitch.colors.primary,
     fontSize: 13,
     fontWeight: "800",
-  },
-  editSection: {
-    width: "100%",
-    marginTop: 16,
-  },
-  editLabel: {
-    color: "rgba(255,255,255,0.50)",
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 6,
-    marginTop: 12,
-    paddingHorizontal: 4,
-  },
-  editInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  editInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  editInputDisabled: {
-    flex: 1,
-    color: "rgba(255,255,255,0.45)",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  editErrorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 10,
-    paddingHorizontal: 4,
-  },
-  editErrorText: {
-    color: "#EF4444",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  editBtns: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 18,
-  },
-  editCancelBtn: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  editCancelText: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  editSaveBtn: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: Stitch.colors.primary,
-  },
-  editSaveText: {
-    color: Stitch.colors.bg,
-    fontSize: 14,
-    fontWeight: "900",
   },
 });

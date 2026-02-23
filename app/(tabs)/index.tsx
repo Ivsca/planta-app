@@ -1,6 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
 import {
   Image,
   Pressable,
@@ -16,9 +15,13 @@ import { GlassCard } from "../../components/ui/GlassCard";
 import { Stitch } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/use-require-auth";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { getAvatarUri } from "../profile/avatarStorage";
+import { useFocusEffect } from "expo-router";
 
-const AVATAR =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCzg_bncn8v8i9GmP4pe6cJr8gcIf1XFYkAwXD0iAhi3_kr0BYR3hZ3I99J5czhyYcol3ibNzhbj7fgJKhdlkbGSvniLzEtJ54AEh4_IySXgYCHhYH-MxDPM2jMxtCxnj6dIv66t47iJ3NaOKncVnzZto3AKckw4YwPIC8sirgUvrc6uczCc2RaP7rIDop6CE_lZ2VXmCmbS7TujBTSBjY8F_cASGCwD01dUgbgHx96IOs-udQ1Jjlwv7mxYVLGDrg2eo4ghjuwm68";
+
+
+
 
 const HERO =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDdguwHSGWzeebuvqDDbvKzkQB2NCV9UKhwCSBI5dGknXFounwX0mQJF7QKQ4w8qcx9AbfNe1txMAGk_6y6-GHz54hz8pM3tgZ2yKoDGSt0k_KI1jrbwwXazrlJyxvay4AFaEoBjObDeWzbV5rFRsodBUkJehvgc-PXRJ0LzJwpSb1ybjM-vDTK0WGK0kl9HqgYbZHhsx5HxFeznIY2DpeNvcFxb654xN4VlxuZ82UOZRfjxoNdFGfAn3n1F-zwIlu9zNrnBsvMM8k";
@@ -84,6 +87,23 @@ export default function HomeScreen() {
 
   const displayName = isAuthenticated && user ? user.name : "Visitante";
 
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      if (!isAuthenticated || !user?.id) {
+        setAvatarUri(null);
+        return;
+      }
+      const saved = await getAvatarUri(user.id);
+      setAvatarUri(saved);
+    })();
+  }, [isAuthenticated, user?.id]);
+
+
+
+
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" />
@@ -92,9 +112,17 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatarWrap}>
-              <Image source={{ uri: AVATAR }} style={styles.avatar} />
+           <View style={styles.avatarWrap}>
+            <View style={styles.avatarMask}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+              ) : (
+                <MaterialIcons name="person" size={26} color="rgba(255,255,255,0.35)" />
+              )}
             </View>
+          </View>
+
+
 
             <View style={{ flex: 1 }}>
               <View style={styles.helloRow}>
@@ -304,11 +332,27 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 999,
-    overflow: "hidden",
     borderWidth: 2,
     borderColor: "rgba(33,196,93,0.20)",
+    padding: 2,
   },
-  avatar: { width: "100%", height: "100%" },
+
+  avatarMask: {
+    flex: 1,
+    borderRadius: 999,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+
+
 
   helloRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   helloText: { color: "#fff", fontSize: 18, fontWeight: "800" },

@@ -1,12 +1,15 @@
+// context/AuthContext.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { Platform } from "react-native";
+import { clearAvatarUri } from "../app/profile/avatarStorage";
 
 /* ─── Tipos ─── */
 export type UserRole = "user" | "admin";
@@ -23,30 +26,40 @@ type AuthState = {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+
   login: (
     email: string,
-    password: string,
+    password: string
   ) => Promise<{ ok: boolean; error?: string }>;
+
   register: (
     name: string,
     email: string,
-    password: string,
+    password: string
   ) => Promise<{ ok: boolean; error?: string }>;
+
   updateProfile: (data: {
     name?: string;
     password?: string;
   }) => Promise<{ ok: boolean; error?: string }>;
+
   deleteAccount: () => Promise<{ ok: boolean; error?: string }>;
-  logout: () => void;
+
+  logout: () => Promise<void>;
+
+  /**
+   * Helper recomendado: úsalo cuando un endpoint devuelva 401
+   * para limpiar sesión y evitar loops.
+   */
+  handleUnauthorized: () => Promise<void>;
 };
 
-const API_BASE = "https://planta-app.onrender.com/api";
-
-// const API_BASE = "http://10.7.64.107:5000/api";
+// ✅ Ideal: mover a config/env central. Por ahora lo dejamos aquí.
+const API_BASE = "http://10.7.64.107:5000/api";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-/* ─── Almacenamiento simple (web usa localStorage, nativo usa AsyncStorage) ─── */
+/* ─── Storage (web usa localStorage, nativo usa AsyncStorage) ─── */
 const storage = {
   async get(key: string) {
     if (Platform.OS === "web") return localStorage.getItem(key);
@@ -68,27 +81,82 @@ const storage = {
   },
 };
 
+function isUserRole(v: unknown): v is UserRole {
+  return v === "user" || v === "admin";
+}
+
+function normalizeUser(raw: any): User | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const id = typeof raw.id === "string" ? raw.id : null;
+  const name = typeof raw.name === "string" ? raw.name : null;
+  const email = typeof raw.email === "string" ? raw.email : null;
+
+  // Backend debería enviar role; si no, default seguro.
+  const role: UserRole = isUserRole(raw.role) ? raw.role : "user";
+
+  if (!id || !name || !email) return null;
+  return { id, name, email, role };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const clearSession = useCallback(async () => {
+    const uid = user?.id;
+
+    setUser(null);
+    setToken(null);
+
+    await storage.remove("auth_token");
+    await storage.remove("auth_user");
+
+    if (uid) await clearAvatarUri(uid);
+  }, [user?.id]);
+
+  const persistSession = useCallback(async (newToken: string, newUser: User) => {
+    setToken(newToken);
+    setUser(newUser);
+    await storage.set("auth_token", newToken);
+    await storage.set("auth_user", JSON.stringify(newUser));
+  }, []);
+
   /* Recuperar sesión guardada al iniciar */
   useEffect(() => {
+    let alive = true;
+
     (async () => {
       try {
         const savedToken = await storage.get("auth_token");
-        const savedUser = await storage.get("auth_user");
-        if (savedToken && savedUser) {
-          setToken(savedToken);
-          setUser(JSON.parse(savedUser) as User);
+        const savedUserStr = await storage.get("auth_user");
+
+        if (!alive) return;
+
+        if (savedToken && savedUserStr) {
+          const parsed = JSON.parse(savedUserStr);
+          const normalized = normalizeUser(parsed);
+
+          if (normalized) {
+            setToken(savedToken);
+            setUser(normalized);
+          } else {
+            // si está corrupto, limpiamos
+            await storage.remove("auth_token");
+            await storage.remove("auth_user");
+          }
         }
       } catch {
-        /* ignorar errores de storage */
+        // si storage falla, no bloquees la app
       } finally {
-        setIsLoading(false);
+        if (alive) setIsLoading(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   /* ── Login ── */
@@ -100,25 +168,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
-
-      console.log("LOGIN RAW RESPONSE:", data);
-      console.log("LOGIN USER:", data?.user);
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        return { ok: false, error: data.error || "Error al iniciar sesión" };
+        return { ok: false, error: data?.error || "Error al iniciar sesión" };
       }
 
-      // ✅ Esperamos que el backend devuelva user.role
-      setToken(data.token);
-      setUser(data.user as User);
-      await storage.set("auth_token", data.token);
-      await storage.set("auth_user", JSON.stringify(data.user));
+      const newToken = typeof data?.token === "string" ? data.token : null;
+      const newUser = normalizeUser(data?.user);
+
+      if (!newToken || !newUser) {
+        return {
+          ok: false,
+          error: "Respuesta inválida del servidor (token/user).",
+        };
+      }
+
+      await persistSession(newToken, newUser);
       return { ok: true };
     } catch {
       return { ok: false, error: "No se pudo conectar al servidor" };
     }
-  }, []);
+  }, [persistSession]);
 
   /* ── Register ── */
   const register = useCallback(
@@ -129,31 +200,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, email, password }),
         });
-        const data = await res.json();
+
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          return { ok: false, error: data.error || "Error al registrarse" };
+          return { ok: false, error: data?.error || "Error al registrarse" };
         }
 
-        setToken(data.token);
-        setUser(data.user as User);
-        await storage.set("auth_token", data.token);
-        await storage.set("auth_user", JSON.stringify(data.user));
+        const newToken = typeof data?.token === "string" ? data.token : null;
+        const newUser = normalizeUser(data?.user);
+
+        if (!newToken || !newUser) {
+          return {
+            ok: false,
+            error: "Respuesta inválida del servidor (token/user).",
+          };
+        }
+
+        await persistSession(newToken, newUser);
         return { ok: true };
       } catch {
         return { ok: false, error: "No se pudo conectar al servidor" };
       }
     },
-    [],
+    [persistSession]
   );
 
   /* ── Logout ── */
   const logout = useCallback(async () => {
-    setUser(null);
-    setToken(null);
-    await storage.remove("auth_token");
-    await storage.remove("auth_user");
-  }, []);
+    await clearSession();
+  }, [clearSession]);
+
+  /**
+   * Úsalo cuando fetch devuelva 401:
+   * - limpia sesión
+   * - evita que pantallas se queden intentando con token inválido
+   */
+  const handleUnauthorized = useCallback(async () => {
+    await clearSession();
+  }, [clearSession]);
 
   /* ── Update Profile ── */
   const updateProfile = useCallback(
@@ -170,29 +255,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify(data),
         });
 
-        const json = await res.json();
+        const json = await res.json().catch(() => ({}));
 
-        if (!res.ok) {
-          return { ok: false, error: json.error || "Error al actualizar" };
+        if (res.status === 401) {
+          await handleUnauthorized();
+          return { ok: false, error: "Sesión expirada. Inicia sesión de nuevo." };
         }
 
-        // ⚠️ Si tu backend no devuelve role en /auth/me, lo preservamos del estado actual.
-        const serverUser = json.user as Partial<User>;
-        const updatedUser: User = {
-          id: serverUser.id ?? user!.id,
-          name: serverUser.name ?? user!.name,
-          email: serverUser.email ?? user!.email,
-          role: serverUser.role ?? user!.role,
-        };
+        if (!res.ok) {
+          return { ok: false, error: json?.error || "Error al actualizar" };
+        }
 
-        setUser(updatedUser);
-        await storage.set("auth_user", JSON.stringify(updatedUser));
+        // Preserva campos no devueltos por el backend
+        const normalized = normalizeUser(json?.user);
+        if (!normalized) {
+          // si el backend devuelve parcial, preservamos lo anterior
+          if (!user) return { ok: false, error: "Estado de usuario inválido" };
+
+          const updatedUser: User = {
+            id: user.id,
+            name: typeof json?.user?.name === "string" ? json.user.name : user.name,
+            email: typeof json?.user?.email === "string" ? json.user.email : user.email,
+            role: isUserRole(json?.user?.role) ? json.user.role : user.role,
+          };
+
+          setUser(updatedUser);
+          await storage.set("auth_user", JSON.stringify(updatedUser));
+          return { ok: true };
+        }
+
+        setUser(normalized);
+        await storage.set("auth_user", JSON.stringify(normalized));
         return { ok: true };
       } catch {
         return { ok: false, error: "No se pudo conectar al servidor" };
       }
     },
-    [token, user],
+    [token, user, handleUnauthorized]
   );
 
   /* ── Delete Account ── */
@@ -205,39 +304,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        return { ok: false, error: json.error || "Error al eliminar cuenta" };
+      if (res.status === 401) {
+        await handleUnauthorized();
+        return { ok: false, error: "Sesión expirada. Inicia sesión de nuevo." };
       }
 
-      setUser(null);
-      setToken(null);
-      await storage.remove("auth_token");
-      await storage.remove("auth_user");
+      if (!res.ok) {
+        return { ok: false, error: json?.error || "Error al eliminar cuenta" };
+      }
+
+      await clearSession();
       return { ok: true };
     } catch {
       return { ok: false, error: "No se pudo conectar al servidor" };
     }
-  }, [token]);
+  }, [token, clearSession, handleUnauthorized]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        register,
-        updateProfile,
-        deleteAccount,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const isAuthenticated = useMemo(() => {
+    
+    return !!token && !!user;
+  }, [token, user]);
+
+  const value: AuthState = {
+    user,
+    token,
+    isLoading,
+    isAuthenticated,
+    login,
+    register,
+    updateProfile,
+    deleteAccount,
+    logout,
+    handleUnauthorized,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
