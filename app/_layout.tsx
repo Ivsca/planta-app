@@ -21,6 +21,11 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
           <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="settings/privacy" options={{ headerShown: false }} />
+          <Stack.Screen name="settings/privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="settings/help" options={{ headerShown: false }} />
+          <Stack.Screen name="saved/index" options={{ headerShown: false }} />
+
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
