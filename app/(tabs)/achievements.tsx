@@ -1,206 +1,133 @@
 // app/(tabs)/achievements.tsx
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { API_BASE } from "../../constants/api";
 import { Stitch } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/use-require-auth";
-import { useAuth } from "@/context/AuthContext";
 
-/**
- * ⚠️ MVP: mueve esto a un config central (env) cuando puedas.
- * No hardcodees IP en producción.
- */
-const API_BASE = "http://10.7.64.107:5000/api";
-
-type MedalId =
-  | "FIRST_ARTICLE"
-  | "FIRST_ROUTINE"
-  | "FIRST_CHALLENGE"
-  | "STREAK_3"
-  | "STREAK_7"
-  | "CHALLENGES_5";
-
-type MedalCatalogItem = {
-  id: MedalId;
+type Medal = {
+  id: string;
   title: string;
   desc: string;
   icon: keyof typeof MaterialIcons.glyphMap;
-};
-
-type EarnedMedal = {
-  id: string;
-  earnedAt?: string;
-  meta?: Record<string, any>;
+  locked?: boolean;
 };
 
 type AchievementsSummary = {
-  streak: {
-    current: number;
-    best: number;
-    lastActiveLocalDate: string | null;
-  };
+  streak: { current: number; best: number; lastActiveLocalDate: string | null };
   progress: {
-    completed: {
-      article: number;
-      routine: number;
-      challenge: number;
-    };
+    completed: { article: number; routine: number; challenge: number };
   };
   challenges: {
     completedCount: number;
-    recent: Array<{
-      refId: string;
-      at: string;
-      meta?: Record<string, any>;
-    }>;
+    recent: { refId: string; at: string; meta: object }[];
   };
-  medals: EarnedMedal[];
+  medals: { id: string; earnedAt: string; meta: object }[];
 };
 
-/**
- * Catálogo: lo que la UI sabe mostrar.
- * Si el backend agrega nuevas medallas, no rompes: simplemente no se verán hasta que las añadas aquí.
- */
-const MEDAL_CATALOG: MedalCatalogItem[] = [
-  {
-    id: "FIRST_ARTICLE",
-    title: "Primera Lectura",
-    desc: "Completaste tu primer artículo",
-    icon: "menu-book",
-  },
-  {
-    id: "FIRST_ROUTINE",
-    title: "Primera Rutina",
-    desc: "Completaste tu primera rutina",
-    icon: "fitness-center",
-  },
-  {
-    id: "FIRST_CHALLENGE",
-    title: "Iniciador",
-    desc: "Completaste tu primer reto",
-    icon: "flag",
-  },
-  {
-    id: "STREAK_3",
-    title: "Constante",
-    desc: "3 días seguidos con actividad completada",
-    icon: "local-fire-department",
-  },
-  {
-    id: "STREAK_7",
-    title: "Racha de 7",
-    desc: "7 días seguidos con actividad completada",
-    icon: "whatshot",
-  },
-  {
-    id: "CHALLENGES_5",
-    title: "Retador",
-    desc: "Completaste 5 retos",
-    icon: "emoji-events",
-  },
+const MEDAL_CATALOG: Omit<Medal, "locked">[] = [
+  { id: "FIRST_ARTICLE", title: "Primer artículo", desc: "Lee tu primer artículo", icon: "menu-book" },
+  { id: "FIRST_ROUTINE", title: "Primera rutina", desc: "Completa tu primera rutina", icon: "fitness-center" },
+  { id: "FIRST_CHALLENGE", title: "Primer reto", desc: "Completa tu primer reto", icon: "eco" },
+  { id: "STREAK_3", title: "Racha de 3", desc: "3 días seguidos activo", icon: "wb-sunny" },
+  { id: "STREAK_7", title: "Racha de 7", desc: "7 días seguidos activo", icon: "local-fire-department" },
+  { id: "CHALLENGES_5", title: "5 retos", desc: "Completa 5 retos", icon: "emoji-events" },
 ];
 
 export default function AchievementsScreen() {
-  const { token } = useAuth();
-  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } =
-    useRequireAuth();
+  const { isAuthenticated, token } = useAuth();
+  const { requireAuth, loginModalVisible, dismissLogin, onLoginSuccess } = useRequireAuth();
 
+  const [summary, setSummary] = useState<AchievementsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<AchievementsSummary | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function load() {
-      if (!token) {
-        setSummary(null);
-        setError(null);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await fetch(`${API_BASE}/achievements/summary`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-
-        // intenta parsear JSON incluso si res no OK (para mostrar error si viene)
-        const data = (await res.json().catch(() => null)) as AchievementsSummary | null;
-
-        if (!res.ok) {
-          // 401: token inválido/expirado -> la app debe tratarlo como no logueado
-          // (ideal: tu AuthContext debería limpiar token en ese caso)
-          setSummary(null);
-          setError(
-            (data as any)?.error ||
-              `Error al cargar logros (${res.status})`
-          );
-          return;
-        }
-
-        setSummary(data);
-      } catch (e: any) {
-        if (e?.name === "AbortError") return;
-        setSummary(null);
-        setError("No se pudieron cargar los logros. Revisa tu conexión.");
-      } finally {
-        setLoading(false);
-      }
+  const fetchSummary = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/achievements/summary`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data: AchievementsSummary = await res.json();
+      setSummary(data);
+    } catch (e: any) {
+      setError(e.message ?? "Error desconocido");
+    } finally {
+      setLoading(false);
     }
-
-    load();
-    return () => controller.abort();
   }, [token]);
 
-  // Datos derivados (con defaults seguros)
-  const streakDays = summary?.streak?.current ?? 0;
-  const streakBest = summary?.streak?.best ?? 0;
-
-  const completedArticles = summary?.progress?.completed?.article ?? 0;
-  const completedRoutines = summary?.progress?.completed?.routine ?? 0;
-  const completedChallenges = summary?.progress?.completed?.challenge ?? 0;
-
-  const earnedSet = useMemo(() => {
-    const ids = new Set<string>();
-    for (const m of summary?.medals ?? []) {
-      if (m?.id) ids.add(String(m.id));
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchSummary();
     }
-    return ids;
-  }, [summary?.medals]);
+  }, [isAuthenticated, token, fetchSummary]);
 
-  const medals = useMemo(() => {
-    return MEDAL_CATALOG.map((m) => ({
-      ...m,
-      locked: !earnedSet.has(m.id),
-    }));
-  }, [earnedSet]);
+  /* ── Datos derivados del resumen ── */
+  const completedArticles = summary?.progress.completed.article ?? 0;
+  const completedRoutines = summary?.progress.completed.routine ?? 0;
+  const completedChallenges = summary?.progress.completed.challenge ?? 0;
+  const totalCompleted = completedArticles + completedRoutines + completedChallenges;
+
+  const streakDays = summary?.streak.current ?? 0;
+  const streakBest = summary?.streak.best ?? 0;
+
+  const progressValue = totalCompleted > 0 ? Math.min(1, totalCompleted / 50) : 0;
+  const progressLabel = `${totalCompleted} completados`;
+
+  const earnedIds = useMemo(
+    () => new Set(summary?.medals.map((m) => m.id) ?? []),
+    [summary]
+  );
+
+  const medals: Medal[] = useMemo(
+    () => MEDAL_CATALOG.map((m) => ({ ...m, locked: !earnedIds.has(m.id) })),
+    [earnedIds]
+  );
 
   const earnedCount = medals.filter((m) => !m.locked).length;
   const totalCount = medals.length;
 
-  // Progreso tipo “barra” (MVP):
-  // Como el backend no envía XP/level todavía, mostramos progreso basado en completados.
-  // Si luego quieres XP real, añade level/xp al /achievements/summary o crea /me.
-  const progressValue = useMemo(() => {
-    // meta simple para que la barra “se mueva” en MVP
-    const score = completedArticles + completedRoutines * 2 + completedChallenges * 3;
-    const max = 50; // ajustable
-    return Math.max(0, Math.min(1, score / max));
-  }, [completedArticles, completedRoutines, completedChallenges]);
+  /* ── Pantalla bloqueada para usuarios no autenticados ── */
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.screen}>
+        <LoginModal visible={loginModalVisible} onDismiss={dismissLogin} onSuccess={onLoginSuccess} />
 
-  const progressLabel = useMemo(() => {
-    const score = completedArticles + completedRoutines * 2 + completedChallenges * 3;
-    return `${score} / 50`;
-  }, [completedArticles, completedRoutines, completedChallenges]);
+        <View style={styles.header}>
+          <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={styles.headerOverlay} />
+          <Text style={styles.headerTitleLeft}>Logros</Text>
+        </View>
+
+        <View style={styles.lockedContainer}>
+          <View style={styles.lockedIconWrap}>
+            <MaterialIcons name="lock-outline" size={56} color={Stitch.colors.primary} />
+          </View>
+          <Text style={styles.lockedTitle}>Inicia sesión para ver tus logros</Text>
+          <Text style={styles.lockedDesc}>
+            Registra tu progreso, desbloquea medallas y compite con la comunidad.
+          </Text>
+          <Pressable
+            style={styles.lockedBtn}
+            onPress={() => requireAuth(() => {})}
+          >
+            <MaterialIcons name="login" size={20} color="#000" />
+            <Text style={styles.lockedBtnText}>Iniciar sesión</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -222,125 +149,101 @@ export default function AchievementsScreen() {
         </Pressable>
       </View>
 
-      {/* Locked state: no token */}
-      {!token ? (
-        <View style={styles.lockedWrap}>
-          <GlassCard style={styles.lockedCard}>
-            <View style={styles.lockedIcon}>
-              <MaterialIcons name="lock" size={26} color={Stitch.colors.primary} />
-            </View>
-            <Text style={styles.lockedTitle}>Inicia sesión para ver tus logros</Text>
-            <Text style={styles.lockedDesc}>
-              Tu racha, progreso, retos completados y medallas se guardan en tu cuenta.
-            </Text>
-
-            <Pressable style={styles.lockedBtn} onPress={() => requireAuth(() => {})}>
-              <Text style={styles.lockedBtnText}>Iniciar sesión</Text>
-              <MaterialIcons name="arrow-forward" size={18} color="#000" />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {loading && !summary ? (
+          <View style={{ paddingVertical: 40, alignItems: "center" }}>
+            <ActivityIndicator size="large" color={Stitch.colors.primary} />
+          </View>
+        ) : null}
+        {/* Error */}
+        {error ? (
+          <GlassCard style={styles.errorCard}>
+            <Text style={styles.errorTitle}>No se pudieron cargar tus logros</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <Pressable style={styles.retryBtn} onPress={fetchSummary}>
+              <Text style={styles.retryText}>Reintentar</Text>
+              <MaterialIcons name="refresh" size={18} color={Stitch.colors.primary} />
             </Pressable>
           </GlassCard>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Error / Loading */}
-          {error ? (
-            <GlassCard style={styles.errorCard}>
-              <Text style={styles.errorTitle}>No se pudieron cargar tus logros</Text>
-              <Text style={styles.errorText}>{error}</Text>
-              <Pressable style={styles.retryBtn} onPress={() => requireAuth(() => {})}>
-                <Text style={styles.retryText}>Reintentar</Text>
-                <MaterialIcons name="refresh" size={18} color={Stitch.colors.primary} />
-              </Pressable>
-            </GlassCard>
-          ) : null}
+        ) : null}
 
-          {/* Progreso */}
-          <GlassCard style={styles.levelCard}>
-            <View style={styles.levelTop}>
-              <View>
-                <Text style={styles.kicker}>Tu Progreso</Text>
-                <Text style={styles.levelTitle}>Progreso general</Text>
-              </View>
-
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={styles.xpText}>{loading ? "Cargando…" : progressLabel}</Text>
-              </View>
+        {/* Progreso */}
+        <GlassCard style={styles.levelCard}>
+          <View style={styles.levelTop}>
+            <View>
+              <Text style={styles.kicker}>Tu Progreso</Text>
+              <Text style={styles.levelTitle}>Progreso general</Text>
             </View>
 
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${Math.round(progressValue * 100)}%` },
-                ]}
-              />
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.xpText}>{loading ? "Cargando…" : progressLabel}</Text>
             </View>
+          </View>
 
-            <Text style={styles.levelHint}>
-              Artículos: {completedArticles} • Rutinas: {completedRoutines} • Retos:{" "}
-              {completedChallenges}
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.round(progressValue * 100)}%` },
+              ]}
+            />
+          </View>
+
+          <Text style={styles.levelHint}>
+            Artículos: {completedArticles} • Rutinas: {completedRoutines} • Retos:{" "}
+            {completedChallenges}
+          </Text>
+        </GlassCard>
+
+        {/* Stats row */}
+        <View style={styles.statsRow}>
+          <GlassCard style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: "rgba(249,115,22,0.20)" }]}>
+              <MaterialIcons name="local-fire-department" size={26} color="#F97316" />
+            </View>
+            <Text style={styles.statValue}>{loading ? "—" : `${streakDays} días`}</Text>
+            <Text style={styles.statLabel}>Racha actual</Text>
+            <Text style={styles.statSubtle}>
+              Mejor: {loading ? "—" : `${streakBest} días`}
             </Text>
           </GlassCard>
 
-          {/* Stats row */}
-          <View style={styles.statsRow}>
-            <GlassCard style={styles.statCard}>
-              <View style={[styles.statIconWrap, { backgroundColor: "rgba(249,115,22,0.20)" }]}>
-                <MaterialIcons name="local-fire-department" size={26} color="#F97316" />
-              </View>
-              <Text style={styles.statValue}>{loading ? "—" : `${streakDays} días`}</Text>
-              <Text style={styles.statLabel}>Racha actual</Text>
-              <Text style={styles.statSubtle}>
-                Mejor: {loading ? "—" : `${streakBest} días`}
-              </Text>
-            </GlassCard>
-
-            <GlassCard style={styles.statCard}>
-              <View style={[styles.statIconWrap, { backgroundColor: "rgba(33,196,93,0.20)" }]}>
-                <MaterialIcons name="task-alt" size={26} color={Stitch.colors.primary} />
-              </View>
-              <Text style={styles.statValue}>{loading ? "—" : completedChallenges}</Text>
-              <Text style={styles.statLabel}>Retos completados</Text>
-              <Text style={styles.statSubtle}>
-                Total completados: {loading ? "—" : completedArticles + completedRoutines + completedChallenges}
-              </Text>
-            </GlassCard>
-          </View>
-
-          {/* Medallas */}
-          <View style={styles.medalsHeader}>
-            <Text style={styles.sectionTitle}>Medallas</Text>
-            <View style={styles.countPill}>
-              <Text style={styles.countPillText}>
-                {loading ? "—" : `${earnedCount} / ${totalCount}`}
-              </Text>
+          <GlassCard style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: "rgba(33,196,93,0.20)" }]}>
+              <MaterialIcons name="task-alt" size={26} color={Stitch.colors.primary} />
             </View>
+            <Text style={styles.statValue}>{loading ? "—" : completedChallenges}</Text>
+            <Text style={styles.statLabel}>Retos completados</Text>
+            <Text style={styles.statSubtle}>
+              Total completados: {loading ? "—" : completedArticles + completedRoutines + completedChallenges}
+            </Text>
+          </GlassCard>
+        </View>
+
+        {/* Medallas */}
+        <View style={styles.medalsHeader}>
+          <Text style={styles.sectionTitle}>Medallas</Text>
+          <View style={styles.countPill}>
+            <Text style={styles.countPillText}>
+              {loading ? "—" : `${earnedCount} / ${totalCount}`}
+            </Text>
           </View>
+        </View>
 
-          <View style={styles.medalsGrid}>
-            {medals.map((m) => (
-              <MedalItem
-                key={m.id}
-                medal={{
-                  id: m.id,
-                  title: m.title,
-                  desc: m.desc,
-                  icon: m.icon,
-                  locked: m.locked,
-                }}
-              />
-            ))}
-          </View>
+        <View style={styles.medalsGrid}>
+          {medals.map((m) => (
+            <MedalItem key={m.id} medal={m} />
+          ))}
+        </View>
 
-          {/* CTA */}
-          <Pressable style={styles.ctaBtn} onPress={() => requireAuth(() => {})}>
-            <Text style={styles.ctaText}>Ver todos los retos</Text>
-            <MaterialIcons name="trending-flat" size={20} color={Stitch.colors.primary} />
-          </Pressable>
+        {/* CTA */}
+        <Pressable style={styles.ctaBtn} onPress={() => requireAuth(() => {})}>
+          <Text style={styles.ctaText}>Ver todos los retos</Text>
+          <MaterialIcons name="trending-flat" size={20} color={Stitch.colors.primary} />
+        </Pressable>
 
-          <View style={{ height: 18 }} />
-        </ScrollView>
-      )}
+        <View style={{ height: 18 }} />
+      </ScrollView>
     </View>
   );
 }
@@ -412,38 +315,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: -0.2,
   },
-
-  lockedWrap: { flex: 1, padding: 16, justifyContent: "center" },
-  lockedCard: {
-    borderRadius: 18,
-    padding: 16,
-    borderColor: "rgba(33,196,93,0.10)",
-    backgroundColor: "rgba(33,196,93,0.05)",
-  },
-  lockedIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(33,196,93,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(33,196,93,0.22)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  lockedTitle: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  lockedDesc: { marginTop: 8, color: "rgba(255,255,255,0.65)", fontWeight: "600", lineHeight: 18 },
-  lockedBtn: {
-    marginTop: 14,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: Stitch.colors.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  lockedBtnText: { color: "#000", fontWeight: "900", fontSize: 14 },
 
   content: {
     paddingHorizontal: 16,
@@ -636,6 +507,55 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
 
+  // Locked screen
+  lockedContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  lockedIconWrap: {
+    width: 100,
+    height: 100,
+    borderRadius: 999,
+    backgroundColor: "rgba(33,196,93,0.10)",
+    borderWidth: 2,
+    borderColor: "rgba(33,196,93,0.20)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  lockedTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "900",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  lockedDesc: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  lockedBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Stitch.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 18,
+  },
+  lockedBtnText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+  // CTA
   ctaBtn: {
     marginTop: 22,
     borderRadius: 18,

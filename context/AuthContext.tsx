@@ -54,8 +54,9 @@ type AuthState = {
   handleUnauthorized: () => Promise<void>;
 };
 
-// ✅ Ideal: mover a config/env central. Por ahora lo dejamos aquí.
-const API_BASE = "http://10.7.64.107:5000/api";
+/* ─── URL base del backend ─── */
+import { API_BASE } from "../constants/api";
+
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
