@@ -6,17 +6,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { LoginModal } from "../../components/auth/LoginModal";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { API_BASE } from "../../constants/api";
 import { Stitch } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/use-require-auth";
-
-
-/**
- * ⚠️ MVP: mueve esto a un config central (env) cuando puedas.
- * No hardcodees IP en producción.
- */
-
-const API_BASE = "http://10.7.64.107:5000/api";
 
 type Medal = {
   id: string;

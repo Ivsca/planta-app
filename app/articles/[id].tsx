@@ -1,22 +1,21 @@
 // app/articles/[id].tsx
-import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
   FlatList,
-  useWindowDimensions,
-  type ListRenderItem,
   Text,
+  useWindowDimensions,
+  View,
+  type ListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { API_BASE } from "@/constants/api";
+import { useAuth } from "@/context/AuthContext";
 import { getMockArticleById } from "../../features/articles/article.store.mock";
 import SlideRenderer from "../../features/articles/SlideRenderer";
 import type { Slide } from "../../features/articles/types";
-import { useAuth } from "@/context/AuthContext";
-
-const API_BASE = "http://10.7.64.107:5000/api";
 
 export default function ArticleScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
