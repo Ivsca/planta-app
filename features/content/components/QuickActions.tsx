@@ -29,6 +29,12 @@ export function QuickActions({ onPress }: Props) {
       category: "Actividad física",
     },
     {
+      id: "videos",
+      title: "Audios",
+      icon: "play-circle-outline",
+      category: "Podcast",
+    },
+    {
       id: "retos",
       title: "Retos semanales",
       icon: "emoji-events",

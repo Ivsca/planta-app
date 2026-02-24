@@ -90,7 +90,7 @@ const getMe = async (req, res) => {
     }
 
     res.json({ user });
-  } catch (err) {
+  } catch{
     res.status(401).json({ error: "Token inválido" });
   }
 };

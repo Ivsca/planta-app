@@ -11,4 +11,5 @@ export const CATEGORY_LABEL: Record<CategoryId, string> = {
   fitness: "Actividad física",
   routine: "Rutina",
   challenges: "Retos",
+  podcast: "Podcast",
 };

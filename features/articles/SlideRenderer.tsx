@@ -4,7 +4,7 @@ import { getCategoryTheme } from "./categoryTheme";
 import type { CategoryTheme } from "./categoryTheme";
 
 import type { ContentCategory } from "../content/types";
-import { CATEGORY_LABEL } from "../content/category"; // ✅ fuente única de labels
+import { CATEGORY_LABEL } from "../content/category"; 
 
 import ActionSlide from "./slides/ActionSlide";
 import ConceptSlide from "./slides/ConceptSlide";

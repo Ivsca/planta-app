@@ -16,7 +16,7 @@ export function SearchBar({ value, onChangeText, onPressFilters }: Props) {
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          placeholder="Buscar videos, rutinas, hábitos…"
+          placeholder="Buscar videos, rutinas, artículos…"
           placeholderTextColor="rgba(255,255,255,0.35)"
           style={styles.input}
           returnKeyType="search"

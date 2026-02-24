@@ -13,7 +13,7 @@ import {
 
 type ActivityEvent = {
   type: string;
-  refType: "article" | "routine" | "challenge" | "quiz";
+  refType: "article" | "routine" | "challenge" | "quiz" | "podcast";
   refId: string;
   meta?: Record<string, any>;
   at: string;

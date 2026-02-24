@@ -84,7 +84,11 @@ export default function ContentViewer() {
   if (error || !item) {
     return (
       <View style={s.center}>
-        <MaterialIcons name="error-outline" size={48} color="rgba(255,255,255,0.3)" />
+        <MaterialIcons
+          name="error-outline"
+          size={48}
+          color="rgba(255,255,255,0.3)"
+        />
         <Text style={s.errorText}>{error || "Contenido no encontrado"}</Text>
         <Pressable style={s.backBtn} onPress={() => router.back()}>
           <Text style={s.backBtnText}>Volver</Text>
@@ -106,7 +110,11 @@ export default function ContentViewer() {
     <View style={s.screen}>
       {/* Header */}
       <View style={s.header}>
-        <Pressable style={s.headerBtn} onPress={() => router.back()} hitSlop={12}>
+        <Pressable
+          style={s.headerBtn}
+          onPress={() => router.back()}
+          hitSlop={12}
+        >
           <MaterialIcons name="arrow-back" size={22} color="#fff" />
         </Pressable>
         <Text style={s.headerTitle} numberOfLines={1}>
@@ -265,7 +273,13 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
-  headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   headerTitle: {
     color: "#fff",
     fontSize: 16,

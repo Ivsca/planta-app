@@ -30,6 +30,11 @@ export const CATEGORY_THEME: Record<CategoryId, CategoryTheme> = {
     soft: "rgba(58,134,255,0.12)",
     border: "rgba(58,134,255,0.30)",
   },
+  podcast: {
+    base: "#9B5DE5",
+    soft: "rgba(155,93,229,0.12)",
+    border: "rgba(155,93,229,0.30)",
+  },
 };
 
 export function getCategoryTheme(category: CategoryId): CategoryTheme {
