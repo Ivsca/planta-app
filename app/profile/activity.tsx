@@ -60,8 +60,8 @@ export default function MyActivityScreen() {
 
   function goTo(refType: string, refId: string) {
     if (refType === "article") router.push(`/articles/${refId}`);
-    if (refType === "routine") router.push(`/routines/${refId}`);
-    if (refType === "challenge") router.push(`/challenges/${refId}`);
+    if (refType === "routine") router.push(`/content/${refId}` as any);
+    if (refType === "challenge") router.push(`/content/${refId}` as any);
   }
 
   return (
