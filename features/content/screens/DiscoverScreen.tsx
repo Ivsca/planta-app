@@ -9,6 +9,7 @@ import { CATEGORY_LABEL, type CategoryId } from "../category";
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   FlatList,
   Image,
   Platform,
@@ -30,9 +31,16 @@ import { useAuth } from "../../../context/AuthContext";
 import { useRequireAuth } from "../../../hooks/use-require-auth";
 import { getSavedIds, toggleSavedId } from "../savedStorage";
 
-type UiTypeChip = "Todo" | "Video" | "Artículo" | "Rutina" | "Reto";
+type UiTypeChip = "Todo" | "Video" | "Artículo" | "Rutina" | "Reto" | "Podcast";
 
-const TYPE_CHIPS: UiTypeChip[] = ["Todo", "Video", "Artículo", "Rutina", "Reto"];
+const TYPE_CHIPS: UiTypeChip[] = [
+  "Todo",
+  "Video",
+  "Artículo",
+  "Rutina",
+  "Reto",
+  "Podcast",
+];
 
 function badgeForFeatured(item: ContentItem, idx: number) {
   if (item.isNew) return "Nuevo";
@@ -50,6 +58,8 @@ function typeLabel(t: ContentItem["type"]) {
       return "Rutina";
     case "challenge":
       return "Reto";
+    case "podcast":
+      return "Podcast";
     default:
       return "Contenido";
   }
@@ -65,6 +75,8 @@ function typeToDomain(t: UiTypeChip): ContentItem["type"] | "all" {
       return "routine";
     case "Reto":
       return "challenge";
+    case "Podcast":
+      return "podcast";
     default:
       return "all";
   }
@@ -79,6 +91,9 @@ function toImageSource(
     : (thumb as ImageSourcePropType);
 }
 
+// ⚠️ Esto está hardcodeado. Si mañana agregas otra categoría temática,
+// aquí la tienes que agregar o refactorizar para no duplicar.
+// (Podcast NO va aquí porque NO es categoría.)
 const CATEGORY_IDS: CategoryId[] = [
   "environment",
   "fitness",
@@ -98,7 +113,6 @@ export default function DiscoverScreen() {
   const [query, setQuery] = useState("");
   const [uiType, setUiType] = useState<UiTypeChip>("Todo");
 
-  // ✅ Guardados reales (persistidos) en Set para lookup rápido
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const listRef = useRef<FlatList<ContentItem>>(null);
@@ -108,7 +122,6 @@ export default function DiscoverScreen() {
 
   const typeFilter = typeToDomain(uiType);
 
-  // ✅ recargar guardados cuando la pantalla vuelve a enfoque (y al entrar)
   useFocusEffect(
     useCallback(() => {
       let alive = true;
@@ -139,9 +152,20 @@ export default function DiscoverScreen() {
     return base.filter((x) => x.type === typeFilter);
   }, [normalizedQuery, typeFilter]);
 
+  // ✅ NO navegues a /content/[id] para podcast si no tienes pantalla implementada.
+  // Esto evita crashes si content/[id] asume "article" (slides).
   const openDetail = useCallback(
-    (id: string) => {
-      router.push(`/content/${id}`);
+    (item: ContentItem) => {
+      if (item.type === "podcast") {
+        Alert.alert(
+          "Podcast",
+          "La pantalla de reproducción todavía no está implementada.",
+        );
+        return;
+      }
+
+      // Mantén tu comportamiento actual para lo que ya existe
+      router.push(`/content/${item.id}`);
     },
     [router],
   );
@@ -165,7 +189,6 @@ export default function DiscoverScreen() {
       requireAuth(async () => {
         if (!user?.id) return;
 
-        // Optimistic UI
         setSavedIds((prev) => {
           const next = new Set(prev);
           if (next.has(id)) next.delete(id);
@@ -175,10 +198,8 @@ export default function DiscoverScreen() {
 
         try {
           const res = await toggleSavedId(user.id, id);
-          // Sincroniza con lo persistido (source of truth)
           setSavedIds(new Set(res.ids));
         } catch {
-          // Revertir si falló
           setSavedIds((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
@@ -201,7 +222,7 @@ export default function DiscoverScreen() {
         <View style={styles.rowContainer}>
           <Pressable
             style={styles.row}
-            onPress={() => openDetail(item.id)}
+            onPress={() => openDetail(item)}
             accessibilityRole="button"
             android_ripple={{ color: "rgba(255,255,255,0.06)" }}
           >
@@ -369,7 +390,7 @@ export default function DiscoverScreen() {
                     <Pressable
                       key={item.id}
                       style={styles.featuredCard}
-                      onPress={() => openDetail(item.id)}
+                      onPress={() => openDetail(item)}
                       accessibilityRole="button"
                       android_ripple={{ color: "rgba(255,255,255,0.06)" }}
                     >

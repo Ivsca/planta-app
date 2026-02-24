@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const activityRoutes = require("./routes/activity.routes");
 const achievementsRoutes = require("./routes/achievements.routes");
 const authRoutes = require("./routes/auth.routes");
+const adminUsersRoutes = require("./routes/adminUsers.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/achievements", achievementsRoutes);
+app.use("/api/admin/users", adminUsersRoutes);
 /* ── Health check ── */
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

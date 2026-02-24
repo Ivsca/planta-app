@@ -91,11 +91,11 @@ function normalizeUser(raw: any): User | null {
   const id = typeof raw.id === "string" ? raw.id : null;
   const name = typeof raw.name === "string" ? raw.name : null;
   const email = typeof raw.email === "string" ? raw.email : null;
-
-  // Backend debería enviar role; si no, default seguro.
-  const role: UserRole = isUserRole(raw.role) ? raw.role : "user";
+  const role = raw.role;
 
   if (!id || !name || !email) return null;
+  if (!isUserRole(role)) return null; 
+
   return { id, name, email, role };
 }
 

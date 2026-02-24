@@ -14,7 +14,7 @@ const API_BASE = "http://10.7.64.107:5000/api";
 
 type ActivityEvent = {
   type: string;
-  refType: "article" | "routine" | "challenge" | "quiz";
+  refType: "article" | "routine" | "challenge" | "quiz" | "podcast";
   refId: string;
   meta?: Record<string, any>;
   at: string;
