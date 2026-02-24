@@ -1,9 +1,9 @@
 // features/content/screens/DiscoverScreen.tsx
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 import { getCategoryTheme } from "../../../features/articles/categoryTheme";
 import { CATEGORY_LABEL, type CategoryId } from "../category";
 
@@ -21,9 +21,9 @@ import {
   type ImageSourcePropType,
 } from "react-native";
 
+import { API_BASE } from "../../../constants/api";
 import { Stitch } from "../../../constants/theme";
-import { FEATURED, FEED } from "../data/content.mock";
-import { applyDiscoverFilters, formatViews } from "../selectors";
+import { formatViews } from "../selectors";
 import type { ContentItem } from "../types";
 
 import { useAuth } from "../../../context/AuthContext";
@@ -90,6 +90,23 @@ function isCategoryId(v: unknown): v is CategoryId {
   return typeof v === "string" && (CATEGORY_IDS as string[]).includes(v);
 }
 
+/** Mapea un item del API a ContentItem del frontend */
+function mapApiItem(raw: any): ContentItem {
+  const base = {
+    id: raw._id,
+    category: raw.category,
+    title: raw.title,
+    description: raw.description,
+    thumbnail: raw.thumbnail || undefined,
+    views: raw.views,
+    isNew: raw.isNew,
+  };
+  if (raw.type === "video") {
+    return { ...base, type: "video", videoUrl: raw.videoUrl || "" } as ContentItem;
+  }
+  return { ...base, type: "article", slides: [], body: raw.body || "" } as any;
+}
+
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -97,6 +114,11 @@ export default function DiscoverScreen() {
 
   const [query, setQuery] = useState("");
   const [uiType, setUiType] = useState<UiTypeChip>("Todo");
+
+  // ── Datos del API ──
+  const [feed, setFeed] = useState<ContentItem[]>([]);
+  const [featured, setFeatured] = useState<ContentItem[]>([]);
+  const [loadingContent, setLoadingContent] = useState(true);
 
   // ✅ Guardados reales (persistidos) en Set para lookup rápido
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -108,10 +130,35 @@ export default function DiscoverScreen() {
 
   const typeFilter = typeToDomain(uiType);
 
-  // ✅ recargar guardados cuando la pantalla vuelve a enfoque (y al entrar)
+  // ── Cargar contenido del API ──
+  const fetchContent = useCallback(async () => {
+    try {
+      setLoadingContent(true);
+      const [feedRes, featRes] = await Promise.all([
+        fetch(`${API_BASE}/content`),
+        fetch(`${API_BASE}/content?featured=true`),
+      ]);
+      if (feedRes.ok) {
+        const data = await feedRes.json();
+        setFeed(data.map(mapApiItem));
+      }
+      if (featRes.ok) {
+        const data = await featRes.json();
+        setFeatured(data.map(mapApiItem));
+      }
+    } catch (e) {
+      console.warn("Error cargando contenido:", e);
+    } finally {
+      setLoadingContent(false);
+    }
+  }, []);
+
+  // Recargar contenido y guardados al enfocar pantalla
   useFocusEffect(
     useCallback(() => {
       let alive = true;
+
+      fetchContent();
 
       (async () => {
         if (!isAuthenticated || !user?.id) {
@@ -125,19 +172,25 @@ export default function DiscoverScreen() {
       return () => {
         alive = false;
       };
-    }, [isAuthenticated, user?.id]),
+    }, [isAuthenticated, user?.id, fetchContent]),
   );
 
   const filtered = useMemo(() => {
-    const base = applyDiscoverFilters({
-      items: FEED,
-      query: normalizedQuery,
-      chip: "Todo",
-    });
+    let base = feed;
 
-    if (typeFilter === "all") return base;
-    return base.filter((x) => x.type === typeFilter);
-  }, [normalizedQuery, typeFilter]);
+    // Filtro por texto
+    if (normalizedQuery) {
+      const q = normalizedQuery.toLowerCase();
+      base = base.filter((it) => it.title.toLowerCase().includes(q));
+    }
+
+    // Filtro por tipo
+    if (typeFilter !== "all") {
+      base = base.filter((x) => x.type === typeFilter);
+    }
+
+    return base;
+  }, [feed, normalizedQuery, typeFilter]);
 
   const openDetail = useCallback(
     (id: string) => {
@@ -361,7 +414,7 @@ export default function DiscoverScreen() {
                 decelerationRate="fast"
                 contentContainerStyle={styles.featuredRow}
               >
-                {FEATURED.map((item, idx) => {
+                {featured.map((item, idx) => {
                   const badge = badgeForFeatured(item, idx);
                   const featuredSource = toImageSource(item.thumbnail);
 

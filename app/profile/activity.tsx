@@ -1,16 +1,15 @@
+import { API_BASE } from "@/constants/api";
+import { useAuth } from "@/context/AuthContext";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   FlatList,
   Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useAuth } from "@/context/AuthContext";
-
-const API_BASE = "http://10.7.64.107:5000/api";
 
 type ActivityEvent = {
   type: string;
