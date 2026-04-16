@@ -71,6 +71,9 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String, sparse: true, unique: true, default: null },
     picture: { type: String, default: null },
 
+    // Token FCM para notificaciones push
+    pushToken: { type: String, default: null },
+
     role: {
       type: String,
       enum: ["user", "admin"],

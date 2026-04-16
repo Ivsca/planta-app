@@ -15,6 +15,7 @@ const podcastRoutes = require("./routes/podcast.routes");
 const challengeRoutes = require("./routes/challenge.routes");
 const motivationalPhraseRoutes = require("./routes/motivationalPhrase.routes");
 const settingsRoutes = require("./routes/settings.routes");
+const notificationRoutes = require("./routes/notification.routes");
 const { startExpireCron } = require("./jobs/expireChallenges");
 
   // para mirar documentacion swagger http://localhost:5000/api-docs 
@@ -39,6 +40,7 @@ app.use("/api/podcasts", podcastRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/motivational-phrase", motivationalPhraseRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 /* ── Health check ── */
 app.get("/api/health", (_req, res) => {

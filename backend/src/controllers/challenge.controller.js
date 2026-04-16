@@ -507,6 +507,13 @@ exports.start = async (req, res) => {
       });
     }
 
+    // Eliminar intentos anteriores abandonados/vencidos del mismo reto
+    await UserChallenge.deleteMany({
+      userId,
+      challengeId,
+      status: "abandoned",
+    });
+
     // Calcular fecha de expiración
     const now = new Date();
     const expiresAt = new Date(now);

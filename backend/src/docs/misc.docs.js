@@ -522,3 +522,103 @@
  *       404:
  *         description: Usuario no encontrado
  */
+
+/* ════════════════════════════════════════════════════════════════
+ *    NOTIFICATIONS — Notificaciones push
+ * ════════════════════════════════════════════════════════════════ */
+
+/**
+ * @swagger
+ * /notifications/register-token:
+ *   post:
+ *     tags: [Notifications]
+ *     summary: Registrar token de push del dispositivo
+ *     description: |
+ *       Guarda el token FCM del dispositivo para recibir notificaciones push.
+ *       Debe llamarse cada vez que la app arranca o el usuario inicia sesión.
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [pushToken]
+ *             properties:
+ *               pushToken:
+ *                 type: string
+ *                 description: Token FCM del dispositivo
+ *     responses:
+ *       200:
+ *         description: Token registrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Token registrado
+ *       400:
+ *         description: pushToken es requerido
+ *       401:
+ *         description: Token no proporcionado
+ */
+
+/**
+ * @swagger
+ * /notifications/broadcast:
+ *   post:
+ *     tags: [Notifications]
+ *     summary: Enviar notificación broadcast (admin)
+ *     description: |
+ *       Envía una notificación push a **todos** los usuarios que tienen
+ *       un token de push registrado. Limpia automáticamente tokens inválidos.
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, body]
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 maxLength: 100
+ *                 example: "¡Nueva rutina disponible!"
+ *               body:
+ *                 type: string
+ *                 maxLength: 500
+ *                 example: "Descubre la nueva rutina de meditación para principiantes."
+ *     responses:
+ *       200:
+ *         description: Notificación enviada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Notificación enviada
+ *                 sent:
+ *                   type: integer
+ *                   example: 42
+ *                 failed:
+ *                   type: integer
+ *                   example: 3
+ *                 cleaned:
+ *                   type: integer
+ *                   example: 2
+ *       400:
+ *         description: title y body son requeridos
+ *       401:
+ *         description: Token no proporcionado
+ *       403:
+ *         description: No tienes permisos de administrador
+ *       503:
+ *         description: Firebase no está configurado en el servidor
+ */
