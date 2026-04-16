@@ -10,7 +10,7 @@ const contentSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["environment", "fitness", "routine", "challenges"],
+      enum: ["environment", "fitness", "routine", "challenges", "welcome", "products"],
       required: true,
     },
     title: {
@@ -31,10 +31,14 @@ const contentSchema = new mongoose.Schema(
     // ── Video fields ──
     videoSource: {
       type: String,
-      enum: ["youtube", "url"],
+      enum: ["youtube", "url", "upload"],
       default: null,
     },
     videoUrl: {
+      type: String,
+      default: null,
+    },
+    videoCloudinaryId: {
       type: String,
       default: null,
     },

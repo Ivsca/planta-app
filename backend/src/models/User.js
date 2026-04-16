@@ -67,7 +67,9 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    password: { type: String, required: true, minlength: 6 },
+    password: { type: String, minlength: 6 },
+    googleId: { type: String, sparse: true, unique: true, default: null },
+    picture: { type: String, default: null },
 
     role: {
       type: String,
@@ -76,19 +78,26 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
+    savedContent: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Content" },
+    ],
+    savedPodcasts: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Podcast" },
+    ],
+
     // Gamificación (legacy / compat)
     level: { type: Number, default: 1 },
     xp: { type: Number, default: 0 },
 
     /**
-     * ⚠️ Legacy:
+     *  Legacy:
      * Si lo sigues usando en UI, mantenlo sincronizado desde activity.stats.
      * La fuente de verdad recomendada para Logros es activity.stats.
      */
     streak: { type: Number, default: 0 },
 
     /**
-     * ⚠️ Legacy:
+     *  Legacy:
      * Mejor usar activity.stats.lastActiveLocalDate para racha diaria robusta.
      */
     lastActiveDate: { type: Date, default: null },
@@ -148,9 +157,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/* Hash de contraseña antes de guardar */
+/* Hash de contraseña antes de guardar (solo si existe y fue modificada) */
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });

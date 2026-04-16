@@ -1,5 +1,5 @@
 const express = require("express");
-const { register, login, getMe, updateMe, deleteMe } = require("../controllers/auth.controller");
+const { register, login, getMe, updateMe, deleteMe, googleLogin } = require("../controllers/auth.controller");
 
 const router = express.Router();
 
@@ -8,6 +8,9 @@ router.post("/register", register);
 
 /* ── POST /api/auth/login ── */
 router.post("/login", login);
+
+/* ── POST /api/auth/google ── */
+router.post("/google", googleLogin);
 
 /* ── GET /api/auth/me ── */
 router.get("/me", getMe);

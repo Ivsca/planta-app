@@ -1,5 +1,8 @@
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
 /* ── Helpers ── */
 const signToken = (userId) =>
@@ -32,7 +35,14 @@ const register = async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        level: user.level,
+        xp: user.xp,
+      },
     });
   } catch (err) {
     console.error("Error en register:", err.message);
@@ -65,7 +75,15 @@ const login = async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        level: user.level,
+        xp: user.xp,
+        picture: user.picture || null,
+      },
     });
   } catch (err) {
     console.error("Error en login:", err.message);
@@ -90,7 +108,7 @@ const getMe = async (req, res) => {
     }
 
     res.json({ user });
-  } catch{
+  } catch (err) {
     res.status(401).json({ error: "Token inválido" });
   }
 };
@@ -140,6 +158,8 @@ const updateMe = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        level: user.level,
+        xp: user.xp,
       },
     });
 
@@ -178,4 +198,68 @@ const deleteMe = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, updateMe, deleteMe };
+module.exports = { register, login, getMe, updateMe, deleteMe, googleLogin };
+
+/* ── POST /api/auth/google ── */
+async function googleLogin(req, res) {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ error: "idToken es requerido" });
+    }
+
+    // Verificar el token con Google
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_WEB_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      return res.status(401).json({ error: "Token de Google inválido" });
+    }
+
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: "No se obtuvo email de la cuenta de Google" });
+    }
+
+    // Buscar por googleId primero, luego por email (para vincular cuentas existentes)
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      user = await User.findOne({ email });
+
+      if (user) {
+        // Vincular cuenta existente con Google
+        user.googleId = googleId;
+        if (picture && !user.picture) user.picture = picture;
+        await user.save();
+      } else {
+        // Crear nuevo usuario
+        user = await User.create({ name, email, googleId, picture: picture || null });
+      }
+    }
+
+    const token = signToken(user._id);
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        level: user.level,
+        xp: user.xp,
+        picture: user.picture || null,
+      },
+    });
+  } catch (err) {
+    console.error("Error en googleLogin:", err.message);
+    res.status(500).json({ error: "Error en el servidor" });
+  }
+}
