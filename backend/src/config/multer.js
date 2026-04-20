@@ -7,6 +7,12 @@ const mime = require("mime-types");
 // Ruta absoluta a la carpeta uploads (backend/uploads/)
 const uploadPath = path.join(__dirname, "..", "..", "uploads");
 
+
+// Crear la carpeta si no existe (necesario en Render y otros hosting)
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadPath);
