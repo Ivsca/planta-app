@@ -1,6 +1,5 @@
 const express = require("express");
 const { register, login, getMe, updateMe, deleteMe, googleLogin } = require("../controllers/auth.controller");
-const upload = require("../config/multer");
 
 const router = express.Router();
 
@@ -17,7 +16,7 @@ router.post("/google", googleLogin);
 router.get("/me", getMe);
 
 /* ── PUT /api/auth/me ── Actualizar perfil */
-router.put("/me", upload.single("picture"),updateMe);
+router.put("/me", updateMe);
 
 /* ── DELETE /api/auth/me ── Eliminar cuenta */
 router.delete("/me", deleteMe);

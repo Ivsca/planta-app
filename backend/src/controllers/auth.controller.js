@@ -1,10 +1,6 @@
-
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
-const uploadToCloudinary = require("../helpers/uploadToCloudinary");
-const fs = require("fs");
-const deleteFromCloudinary = require("../helpers/deleteFromCloudinary");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
@@ -133,7 +129,7 @@ const updateMe = async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    const { name, password, picture } = req.body;
+    const { name, password } = req.body;
 
     // Actualizar nombre si se proporcionó
     if (name !== undefined) {
@@ -153,37 +149,6 @@ const updateMe = async (req, res) => {
       user.password = password; // el pre-save del modelo la hashea
     }
 
-    // Subir nueva foto si se envió archivo
-    if (req.file) {
-      try {
-        // Si hay una foto anterior en Cloudinary, eliminarla
-        if (user.picture && typeof user.picture === "string" && user.picture.includes("cloudinary.com")) {
-          // Extraer public_id de la URL
-          // Ejemplo de URL: https://res.cloudinary.com/<cloud_name>/image/upload/v1234567890/avatars/filename.jpg
-          const regex = /\/upload\/(?:v\d+\/)?(.+)(\.[a-zA-Z0-9]+)?$/;
-          const match = user.picture.match(regex);
-          if (match && match[1]) {
-            const publicId = match[1].replace(/\\/g, "/");
-            try {
-              await deleteFromCloudinary(publicId, "image");
-            } catch (e) {
-              // No bloquear si falla el borrado
-              console.error("No se pudo borrar imagen anterior de Cloudinary:", e.message);
-            }
-          }
-        }
-        const result = await uploadToCloudinary(req.file.path, "image", "avatars");
-        user.picture = result.secure_url;
-        // Eliminar archivo temporal
-        fs.unlink(req.file.path, () => {});
-      } catch (err) {
-        return res.status(500).json({ error: "Error al subir imagen" });
-      }
-    } else if (picture !== undefined) {
-      // Si se envía picture como string (URL), actualizarlo
-      user.picture = picture;
-    }
-
     await user.save();
 
     res.json({
@@ -195,7 +160,6 @@ const updateMe = async (req, res) => {
         role: user.role,
         level: user.level,
         xp: user.xp,
-        picture: user.picture || null,
       },
     });
 
