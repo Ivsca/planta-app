@@ -7,7 +7,7 @@ function getFirebaseAdmin() {
 
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) {
-    console.warn("⚠️  FIREBASE_SERVICE_ACCOUNT no configurada — push notifications deshabilitadas");
+    console.warn("  FIREBASE_SERVICE_ACCOUNT no configurada — push notifications deshabilitadas");
     return null;
   }
 
@@ -16,10 +16,10 @@ function getFirebaseAdmin() {
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-    console.log("✅ Firebase Admin inicializado");
+    console.log(" Firebase Admin inicializado");
     return firebaseApp;
   } catch (err) {
-    console.error("❌ Error inicializando Firebase Admin:", err.message);
+    console.error(" Error inicializando Firebase Admin:", err.message);
     return null;
   }
 }
